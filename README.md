@@ -8,7 +8,7 @@
 
 一个写给折腾家和极客的极轻量级、**零数据库**个人博客系统。抛弃了臃肿的 MySQL 和繁杂的框架，回归纯文本的本质。
 
-整个博客的所有文章，仅仅存储在一个 `.md` 文件中。
+整个博客的所有文章，全部存储在一个 `.md` 文件中。
 
 ## ✨ 核心特性 (Features)
 
@@ -24,7 +24,7 @@
 ## 🛠️ 技术栈 (Tech Stack)
 
 - **前端**：HTML5, CSS3, Vanilla JavaScript, Marked.js, Highlight.js
-- **后端**：PHP 8.x (仅一个极简 `api.php` 脚本文件)
+- **后端**：PHP 8.x 
 - **环境要求**：任何支持 PHP 的 Web 服务器（如 Nginx + PHP-FPM / OpenResty，完美适配 1Panel 等面板容器环境）。
 
 ## 📂 目录结构 (Directory Structure)
