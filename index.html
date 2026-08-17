@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页 - 梦归の小站</title>
+    <link rel="stylesheet" href="./css/style.css">
+    
+</head>
+<body>
+
+    <nav class="navbar liquid-glass">
+        <div class="nav-left">
+            <div class="nav-avatar" style="background-image: url('./src/webpic-head.png');">
+            </div>
+            <a href="#" class="nav-brand">梦归の小站.</a>
+        </div>
+        <div class="nav-links">
+            <a href="#" id="theme-toggle" title="切换黑夜/白天模式" style="font-size: 1.2rem;">🌙</a>
+            <a href="index.html" class="active">首页</a>
+            <a href="archive.html">归档</a>
+            <a href="about.html">关于</a>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        
+        <section class="hero-section">
+            <div class="hero-left">
+                <div class="typography-art">
+                    <span class="typo-small">欢迎来到</span>
+                    <span class="typo-huge">梦归の小站</span>
+                    <span class="typo-gradient">这里是 梦归。</span>
+                    <p class="typo-desc">记录开发日常、系统运维与硬件折腾。<br>在繁杂的代码与服务器日志中，寻找技术的纯粹乐趣。</p>
+                </div>
+            </div>
+
+<div class="hero-right">
+    <div class="info-card liquid-glass name-card">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px; font-family: monospace;">> Root access granted.</p>
+    </div>
+    
+    <div class="info-card liquid-glass desc-card">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <span style="display: inline-block; width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);"></span>
+            <strong style="font-size: 1.1rem; color: var(--text-primary); letter-spacing: 1px;">CS 在读学生 / 终身折腾家</strong>
+        </div>
+        <p>探索代码的边界，热衷于在底层逻辑中寻找秩序。</p>
+    </div>
+
+    <div class="info-card liquid-glass tags-card">
+        <span class="tag">C++ / Java</span>
+        <span class="tag">Arch / Debian</span>
+        <span class="tag">Server Admin</span>
+        <span class="tag">Android ROM</span>
+    </div>
+</div>
+        </section>
+
+        <section class="articles-section">
+            <div class="section-header">
+                <h2 class="section-title">最新文章</h2>
+            </div>
+
+            <div class="post-grid" id="latest-posts-container">
+                
+                
+            </div>
+        </section>
+        
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-left">
+            <a href="login.html" title="Admin Login">
+            <div class="footer-img" style="background-image: url('./src/webpic-foot.jpg');"></div>
+            </a>
+            <span class="footer-quote">“You cannot imprison the wind, just as you cannot imprison the will to be free.”</span>
+        </div>
+        <div class="footer-right">
+            <p>&copy; 2026 梦归. All rights reserved.</p>
+            <p>Powered by 梦归の小站 Architecture.</p>
+            <p><a href="https://beian.miit.gov.cn/" style="font-size: 0.85rem;
+    color: #94a3b8;">皖ICP备2024071168号</a></p>
+        </div>
+    </footer>
+    <script src="./js/blog.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.createElement('canvas');
+            canvas.style.position = 'fixed';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+            canvas.style.zIndex = '9999';
+            canvas.style.pointerEvents = 'none';
+            canvas.style.transition = 'opacity 1s ease';
+            document.body.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+            let w = canvas.width = window.innerWidth;
+            let h = canvas.height = window.innerHeight;
+            const drops = [];
+            for (let i = 0; i < 500; i++) {
+                drops.push({
+    
+                    x: Math.random() * (w + h), 
+                    y: Math.random() * -h, 
+                    length: Math.random() * 20 + 10, 
+                    speed: Math.random() * 15 + 15, 
+                    opacity: Math.random() * 0.4 + 0.1 
+                });
+            }
+
+            let animationId;
+
+            function drawRain() {
+                ctx.clearRect(0, 0, w, h);
+                ctx.lineCap = 'round';
+
+                const isDark = document.body.classList.contains('dark-mode');
+
+                const rainRGB = isDark ? '200, 220, 255' : '96, 165, 250';
+
+                for (let i = 0; i < drops.length; i++) {
+                    const drop = drops[i];
+                    ctx.beginPath();
+                    ctx.moveTo(drop.x, drop.y);
+                    
+                    ctx.lineTo(drop.x - drop.length * 0.4, drop.y + drop.length);
+                    ctx.strokeStyle = `rgba(${rainRGB}, ${drop.opacity})`;
+                    ctx.lineWidth = 2.0;
+                    ctx.stroke();
+                    drop.y += drop.speed;
+                    drop.x -= drop.speed * 0.4;
+
+                    if (drop.y > h || drop.x < 0) {
+                        drop.y = Math.random() * -50;
+                        drop.x = Math.random() * (w + h);
+                    }
+                }
+                animationId = requestAnimationFrame(drawRain);
+            }
+
+            window.addEventListener('resize', () => {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+            });
+
+
+            drawRain();
+
+            setTimeout(() => {
+
+                canvas.style.opacity = '0';
+                
+
+                setTimeout(() => {
+                    cancelAnimationFrame(animationId);
+                    canvas.remove();
+                }, 1000);
+                
+            }, 4000);
+        });
+    </script>
+</body>
+</html>

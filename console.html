@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终端控制台 - 梦归の小站</title>
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+    
+    <style>
+        body { margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #0f172a; color: #e2e8f0; }
+        
+        .console-header {
+            display: flex; gap: 15px; padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            align-items: center;
+        }
+        .console-header input {
+            background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white; padding: 8px 15px; border-radius: 8px; font-size: 1rem; outline: none;
+        }
+        .console-header input:focus { border-color: #db2777; }
+        .input-title { flex: 2; }
+        .input-date, .input-tag { flex: 1; }
+        
+        .btn-publish {
+            background: linear-gradient(135deg, #db2777, #7c3aed); border: none;
+            color: white; padding: 8px 25px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; transition: transform 0.2s;
+        }
+        .btn-publish:hover { transform: scale(1.05); }
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+        .editor-container { flex: 1; border-right: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column;}
+        .editor-container textarea {
+            flex: 1; width: 100%; background: #1e293b; color: #e2e8f0; border: none;
+            padding: 20px; font-size: 1.1rem; font-family: monospace; line-height: 1.6;
+            resize: none; outline: none;
+        }
+        .preview-container {
+            flex: 1; padding: 20px 40px; background: #0f172a; overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <header class="console-header">
+        <div style="font-weight: 800; color: #db2777; margin-right: 20px;">>_ Console</div>
+        <input type="text" id="post-title" class="input-title" placeholder="文章标题">
+        <input type="date" id="post-date" class="input-date">
+        <input type="text" id="post-tag" class="input-tag" placeholder="标签 (如: Linux)">
+        <button id="btn-publish" class="btn-publish">发 布</button>
+    </header>
+    <main class="workspace">
+        <div class="editor-container">
+            <textarea id="markdown-input" placeholder="开始用 Markdown 编写你的文章..."></textarea>
+        </div>
+        <div class="preview-container">
+            <div id="markdown-preview" class="markdown-body"></div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+    const inputArea = document.getElementById('markdown-input');
+    const previewArea = document.getElementById('markdown-preview');
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit_id');
+    const isEditMode = editId !== null;
+
+    if (isEditMode) {
+        document.querySelector('.console-header div').innerText = '>_ Console (Edit Mode)';
+        try {
+            const response = await fetch('./blogs/default.md');
+            const fullText = await response.text();
+            const rawPosts = fullText.split('---POST---');
+            
+            if (rawPosts[editId]) {
+                const text = rawPosts[editId];
+                const titleMatch = text.match(/^#\s+(.+)/m);
+                const metaMatch = text.match(/<!--\s*DATE:\s*(.*?)\s*\|\s*TAG:\s*(.*?)\s*-->/);
+                
+                document.getElementById('post-title').value = titleMatch ? titleMatch[1] : '';
+                document.getElementById('post-date').value = metaMatch ? metaMatch[1] : '';
+                document.getElementById('post-tag').value = metaMatch ? metaMatch[2] : '';
+            
+                const content = text.replace(/^#\s+(.+)/m, '').replace(/<!--.*?-->/s, '').trim();
+                inputArea.value = content;
+                
+                previewArea.innerHTML = marked.parse(content);
+            }
+        } catch(e) { console.error("读取原文失败", e); }
+    } else {
+        document.getElementById('post-date').value = new Date().toISOString().split('T')[0];
+    }
+
+    inputArea.addEventListener('input', () => {
+        previewArea.innerHTML = marked.parse(inputArea.value);
+        document.querySelectorAll('#markdown-preview pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+    });
+    document.getElementById('btn-publish').addEventListener('click', async () => {
+        const title = document.getElementById('post-title').value;
+        const date = document.getElementById('post-date').value;
+        const tag = document.getElementById('post-tag').value;
+        const content = document.getElementById('markdown-input').value;
+
+        if (!title || !content) { alert('标题和内容不能为空！'); return; }
+
+        const token = sessionStorage.getItem('admin_token');
+        if (!token) {
+            alert('授权丢失，请重新登录！');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const rawContent = `# ${title}\n<!-- DATE: ${date} | TAG: ${tag} -->\n\n${content}`;
+        
+        const btn = document.getElementById('btn-publish');
+        btn.innerText = '提交中...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('token', token);
+            formData.append('content', rawContent);
+            
+            if (isEditMode) {
+                formData.append('action', 'edit');
+                formData.append('id', editId);
+            } else {
+                formData.append('action', 'add');
+            }
+
+            const response = await fetch('./api.php', { method: 'POST', body: formData });
+
+            if (response.ok) {
+                alert(isEditMode ? '修改成功！已覆盖原文。' : '发布成功！');
+                if (isEditMode) {
+                    window.location.href = `post.html?id=${editId}`;
+                } else {
+                    window.location.reload(); 
+                }
+            } else {
+                alert('操作失败，请检查密钥权限。');
+            }
+        } catch (error) {
+            alert('网络错误！');
+        } finally {
+            btn.innerText = '发 布';
+            btn.disabled = false;
+        }
+    });
+});
+    </script>
+</body>
+</html>

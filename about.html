@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于我 - 梦归の小站</title>
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+    <!-- 导航栏 (注意将 '关于' 设为 active) -->
+    <nav class="navbar liquid-glass">
+        <div class="nav-left">
+            <div class="nav-avatar" style="background-image: url('./src/webpic-head.png');"></div>
+            <a href="index.html" class="nav-brand">梦归の小站.</a>
+        </div>
+        <div class="nav-links">
+            <a href="#" id="theme-toggle" title="切换黑夜/白天模式" style="font-size: 1.2rem;">🌙</a>
+            <a href="index.html">首页</a>
+            <a href="archive.html">归档</a>
+            <a href="about.html" class="active">关于</a>
+        </div>
+    </nav>
+
+    <!-- 关于页主体内容 -->
+    <main class="main-container">
+        
+        <!-- 头部标题 -->
+        <div class="about-header">
+            <span class="typo-small">About Me</span>
+            <h1 class="typo-huge">关于我</h1>
+            <p class="typo-desc">在软硬件的交界处寻找秩序，在代码的海洋里保持好奇。</p>
+        </div>
+
+        <div class="about-layout">
+            
+            <div class="about-main">
+                <div class="about-card liquid-glass">
+                    <h2>Hello, World.</h2>
+                    <div class="about-content-text">
+                        <p>你好，我是 梦归。目前是一名在读大学生，专注于瞎折腾技术开发。</p>
+                        
+                        <P>目前主要折腾：</P>
+
+                        <P>
+                        - 🔐 网络安全与渗透测试<br>
+
+                        - 💻 Linux 系统与服务器部署<br>
+
+                        - 📱 Android类原生编译等等<br>
+                        </P>
+
+                        <p>我喜欢折腾系统、写点代码，也会偶尔记录一些技术笔记与生活碎片。</p>
+
+                        <p>
+                        这个博客主要用于：<br>
+
+                        - 记录我的学习与项目过程<br>
+
+                        - 分享实用教程与经验<br>
+
+                        - 偶尔发发牢骚（咳）<br>
+
+                        > “折腾，是理解世界的一种方式。”
+
+                        </p>
+                        <p>
+                        游戏爱好：
+
+                        个人比较喜欢玩二游,比如原神:889496214,崩铁:834663541(亚服🌏) <br>
+
+                        也喜欢玩音游:phigros
+                        </p>                        
+                        <div id="content" class="markdown-body"></div>
+                    </div>
+                </div>
+            </div>
+>
+            <div class="about-sidebar">
+                
+                <div class="about-card liquid-glass">
+                    <h2>Tech Stack</h2>
+                    
+                    <div class="skill-group">
+                        <div class="skill-title">编程语言</div>
+                        <div class="tags-card">
+                            <span class="tag">C / C++</span>
+                            <span class="tag">Java</span>
+                            <span class="tag">Bash / JS</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-group">
+                        <div class="skill-title">系统与架构</div>
+                        <div class="tags-card">
+                            <span class="tag">Linux (Arch/Debian)</span>
+                            <span class="tag">Android ROM 构建</span>
+                            <span class="tag">KernelSU</span>
+                        </div>
+                    </div>
+
+                    <div class="skill-group">
+                        <div class="skill-title">工具与硬件</div>
+                        <div class="tags-card">
+                            <span class="tag">Dell PowerEdge</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 联系方式卡片 -->
+                <div class="about-card liquid-glass">
+                    <h2>Connect</h2>
+                    <ul class="contact-list">
+                        <li>📧 Email: <a href="mailto:">your.email@example.com</a></li>
+                        <li>🐙 GitHub: <a href="https://github.com/mengguizzz" target="_blank">@yourusername</a></li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+        
+    </main>
+
+<textarea id="markdown-content" style="display:none;">
+动漫推荐：
+
+![img](https://ztyou.cn/upload/p2912972913-NhHD.webp)
+
+**「進撃の巨人」**
+
+![img](https://ztyou.cn/upload/p2221182844.webp)
+
+**CLANNAD ～AFTER STORY～**
+</textarea>
+
+    <footer class="site-footer">
+        <div class="footer-left">
+            <div class="footer-img" style="background-image: url('./src/webpic-foot.jpg');"></div>
+            <span class="footer-quote">“You cannot imprison the wind, just as you cannot imprison the will to be free.”</span>
+        </div>
+        <div class="footer-right">
+            <p>&copy; 2026 梦归. All rights reserved.</p>
+            <p>Powered by 梦归の小站 Architecture.</p>
+            <p><a href="https://beian.miit.gov.cn/" style="font-size: 0.85rem;
+    color: #94a3b8;">皖ICP备2024071168号</a></p>
+        </div>
+    </footer>
+    <script src="./js/blog.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const rawMarkdown = document.getElementById('markdown-content').value;
+        document.getElementById('content').innerHTML = marked.parse(rawMarkdown);
+    });
+</script>
+
+</body>
+</html>
