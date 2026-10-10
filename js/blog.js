@@ -124,6 +124,16 @@
      */
     var _visible = null;
 
+    /*
+     * 后端是不是够不着。
+     *
+     * 纯静态托管（比如 GitHub Pages）上 api.php 不会被当成程序执行，
+     * 请求回来的是文件内容、不是 JSON —— 这时候文章列表必然是空的。
+     * 记个标记，好把"空列表"和"后端不在"这两种情况区分开，
+     * 免得演示站上看着像坏了。
+     */
+    var BACKEND_DOWN = false;
+
     function normalizePost(p) {
         var tags = (p.tags && p.tags.length) ? p.tags : ['Blog'];
         return {
@@ -150,7 +160,8 @@
             if (!res.ok || !data.success) throw new Error(data.error || ('HTTP ' + res.status));
             _visible = (data.items || []).map(normalizePost);
         } catch (err) {
-            console.error('[SFMblog] 读取文章列表失败：', err);
+            BACKEND_DOWN = true;
+            console.warn('[SFMblog] 读取文章列表失败（没有后端？）：', err && err.message);
             _visible = _visible || [];
         }
         return _visible;
@@ -164,6 +175,7 @@
             if (res.ok && data.success) return { post: normalizePost(data.post) };
             return { error: data.error || ('HTTP ' + res.status), deleted: !!data.deleted };
         } catch (err) {
+            BACKEND_DOWN = true;
             return { error: '网络错误' };
         }
     }
@@ -375,8 +387,10 @@
         var posts = await getAllPosts();
 
         if (!posts.length) {
-            box.innerHTML = '<div class="empty-state" style="grid-column:1/-1">' +
-                '<strong>还没有文章</strong>去控制台写下第一篇吧。</div>';
+                box.innerHTML = '<div class="empty-state" style="grid-column:1/-1">' + (BACKEND_DOWN
+                    ? '<strong>这里是静态预览</strong>文章列表由 api.php 提供，而纯静态托管（GitHub Pages）上没有 PHP。' +
+                      '把仓库部署到任意支持 PHP 的服务器上就能看到这里的文章 —— 步骤见 README 的「快速开始」。'
+                    : '<strong>还没有文章</strong>去控制台写下第一篇吧。') + '</div>';
             return;
         }
 
@@ -401,7 +415,9 @@
         var posts = await getAllPosts();
 
         if (!posts.length) {
-            box.innerHTML = '<div class="empty-state"><strong>归档是空的</strong>还没有可展示的文章。</div>';
+            box.innerHTML = '<div class="empty-state">' + (BACKEND_DOWN
+                ? '<strong>这里是静态预览</strong>归档同样来自 api.php，纯静态托管上没有 PHP，所以是空的。'
+                : '<strong>归档是空的</strong>还没有可展示的文章。') + '</div>';
             return;
         }
 
@@ -1485,7 +1501,9 @@
         loadComments().catch(function (err) {
             var list = $('#cmt-list');
             if (list) list.innerHTML = '';
-            commentHint('评论加载失败：' + err.message, 'err');
+            console.warn('[SFMblog] 评论加载失败：', err && err.message);
+            // 静态预览（没有 PHP）时评论必然加载不出来，这时候别甩一句"失败"吓人
+            commentHint('评论需要 PHP 后端 —— 如果这是纯静态预览，部署到服务器上就能用了。');
         });
     }
 
