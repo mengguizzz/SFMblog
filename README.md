@@ -417,8 +417,23 @@ please use @pixi/unsafe-eval module to enable support.
 
 #### 模型来源
 
-默认走 `fghrsh/live2d_api` 的模型库（社区整理的模型合集，**版权归各自作者，
-仅供学习交流**）。要换成自己的模型，改 `initWidget()` 里的 `cdnPath` 或 `modelId`。
+**已经完全自托管**，跑起来不请求任何第三方域名：
+
+```text
+src/live2d/
+├── widget/                     组件本体（约 170 KB）
+│   ├── waifu.css / waifu-tips.js / waifu-tips.json
+│   └── live2d.min.js           Cubism 2 核心
+├── model_list.json             模型清单
+└── model/Potion-Maker/Pio/     模型本体（约 0.9 MB）
+    ├── index.json
+    ├── model.moc / textures/ / motions/
+```
+
+合计约 1.1 MB，且**默认关闭**，所以不点按钮的访客一个字节都不会下载。
+
+> 模型取自 `fghrsh/live2d_api`（社区整理的合集），**版权归原作者，仅供学习交流**。
+> 自托管只是省掉了第三方 CDN，并不改变授权性质。
 
 #### 怎么换模型
 
@@ -443,9 +458,21 @@ var MODEL_ID  = 0;
 
 想看最新列表，直接访问 `MODEL_CDN + 'model_list.json'`。
 
-**想用自己的模型**：把模型文件夹传到站点的 `src/live2d/` 下（目录里要有
-`model_list.json` 和模型各自的 `textures.cache`），然后把
-`MODEL_CDN` 改成 `'./src/live2d/'`。
+**想换成自己的模型**：把模型目录放到 `src/live2d/model/<你的模型名>/`
+（里面要有 `index.json`、`.moc`、`textures/`、`motions/`），
+然后改 `src/live2d/model_list.json`：
+
+```json
+{
+    "models": ["你的模型名"],
+    "messages": ["介绍一下你的模型"]
+}
+```
+
+> ⚠️ 当前只加载了 **Cubism 2**（`.moc`）。如果你用新版 Cubism Editor 做模型，
+> 导出的是 **`.moc3`**，需要把 `initLive2D()` 里的 `cubism5Path` 指回
+> `https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js`，
+> 并在 nginx 的 CSP 里放行 `https://cubism.live2d.com`。
 
 ### ⚠️ 一个把整个背景弄丢的坑
 

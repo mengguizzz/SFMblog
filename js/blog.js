@@ -1022,21 +1022,22 @@
         if (!hasMouse || window.innerWidth < 1024 || prefersLess()) return;
         if (document.getElementById('sfm-pet-btn')) return;
 
-        var PATH = 'https://fastly.jsdelivr.net/npm/live2d-widgets@1.0.1/dist/';
+        // 组件和模型都在自己的服务器上（src/live2d/），不依赖任何第三方 CDN
+        var PATH = './src/live2d/widget/';
         var PET_KEY = 'sfmb_pet';
         var loading = false;
 
         /*
          * ↓↓↓ 想换模型改这两个值 ↓↓↓
          *
-         * MODEL_CDN：模型仓库地址，要求里面有 model_list.json 和 textures.cache。
-         *            默认用 fghrsh/live2d_api（社区整理的合集，版权归各自作者，仅供学习）。
-         *            想用自己的模型：把模型文件夹传到站点的 src/live2d/ 下，
-         *            然后把它改成 './src/live2d/'。
-         * MODEL_ID：用仓库里的第几个模型（从 0 开始）。不确定有哪些，
-         *           可以打开 MODEL_CDN + 'model_list.json' 看列表。
+         * MODEL_CDN：模型仓库目录，里面要有 model_list.json 和 model/ 子目录。
+         *            默认是站点自带的 './src/live2d/'。
+         * MODEL_ID：用仓库里的第几个模型（从 0 开始）。
+         *
+         * 换成自己的模型：把模型放到 src/live2d/model/ 下，
+         * 然后改 src/live2d/model_list.json 里的 models 数组。
          */
-        var MODEL_CDN = 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/';
+        var MODEL_CDN = './src/live2d/';
         var MODEL_ID = 0;
 
         // 默认关闭：只有你点过"开启"才自动加载，免得占地方 / 吃 GPU
@@ -1081,8 +1082,8 @@
                 cubism5Path: '',
                 cdnPath: MODEL_CDN,
                 modelId: MODEL_ID,
-                // 工具条：换模型 / 换衣服 / 关于 / 关闭
-                tools: ['switch-model', 'switch-texture', 'info', 'quit'],
+                // 本地只有一个模型，切换和换装都没意义，只留"关于"和"关闭"
+                tools: ['info', 'quit'],
                 logLevel: 'warn',
                 drag: true,
             });
