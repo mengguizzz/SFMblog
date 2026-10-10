@@ -742,6 +742,7 @@
         var FRAME = 1000 / 18;
         var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
         var cols = 0, drops = [], speeds = [], last = 0;
+        var raf = 0;
 
         function resize() {
             var w = window.innerWidth, h = window.innerHeight;
@@ -767,9 +768,8 @@
         }
 
         function frame(now) {
-            requestAnimationFrame(frame);
+            raf = requestAnimationFrame(frame);
             if (document.hidden) { last = now; return; }
-            if (document.documentElement.dataset.rain === 'off') return;
             if (now - last < FRAME) return;
 
             var dt = Math.min(3, (now - last) / FRAME);
@@ -798,15 +798,36 @@
             }
         }
 
+        function start() {
+            if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
+        }
+        function stop() {
+            if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        }
+
         resize();
         window.addEventListener('resize', resize);
-        requestAnimationFrame(frame);
+
+        /*
+         * 默认关闭。
+         *
+         * 雨点每重绘一帧，玻璃背后的画面就变一次，页面上所有 backdrop-filter
+         * 都得跟着重算。实测（关掉极光漂移之后）：
+         *     雨开启  14.0% GPU
+         *     雨关闭   6.2%
+         *     雨调淡   7.3%   <- 调透明度几乎没用，开销在于"重绘"本身
+         * 所以默认不开，当成彩蛋：在页面上敲 rain 打开。
+         */
+        if (!document.documentElement.dataset.rain) {
+            document.documentElement.dataset.rain = 'off';
+        }
+        if (document.documentElement.dataset.rain !== 'off') { start(); }
 
         window.sfmbToggleRain = function () {
-            var cur = document.documentElement.dataset.rain || 'low';
-            var next = cur === 'high' ? 'off' : 'high';
+            var cur = document.documentElement.dataset.rain || 'off';
+            var next = cur === 'off' ? 'low' : (cur === 'low' ? 'high' : 'off');
             document.documentElement.dataset.rain = next;
-            if (next !== 'off') { last = 0; }
+            if (next === 'off') { stop(); } else { start(); }
             return next;
         };
     }
@@ -990,7 +1011,10 @@
             if (buf.slice(-4) !== 'rain' || !window.sfmbToggleRain) return;
 
             var now = window.sfmbToggleRain();
-            toastMsg(now === 'high' ? '终端雨 · 加强' : '终端雨 · 关闭', now === 'high' ? 'ok' : '');
+            var label = now === 'high' ? '终端雨 · 加强'
+                : now === 'low' ? '终端雨 · 开启'
+                    : '终端雨 · 关闭';
+            toastMsg(label, now === 'off' ? '' : 'ok');
             buf = '';
         });
     }

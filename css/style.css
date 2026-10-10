@@ -2031,14 +2031,19 @@ html.has-reveal [data-reveal].is-in {
     z-index: -1;
     display: block;
     pointer-events: none;
-    opacity: var(--rain-op, 0.20);
+    /*
+     * 默认不可见。雨每重绘一帧，玻璃背后的画面就变一次，
+     * 所有 backdrop-filter 都要跟着重算 —— 实测这一项占 7.8 个百分点。
+     * 现在它是彩蛋：在页面上敲 rain 打开（off -> low -> high -> off）。
+     */
+    opacity: 0;
     transition: opacity 1.4s var(--ease);
 }
-html[data-theme="dark"] .rain { opacity: 0.24; }
 html[data-rain="off"] .rain { opacity: 0; }
+html[data-rain="low"] .rain { opacity: 0.20; }
+html[data-theme="dark"][data-rain="low"] .rain { opacity: 0.24; }
 html[data-rain="high"] .rain { opacity: 0.5; }
 html[data-theme="dark"][data-rain="high"] .rain { opacity: 0.62; }
-html[data-theme="dark"][data-rain="off"] .rain { opacity: 0; }
 
 /* 跟着指针走的柔光，让玻璃有"被照亮"的感觉 */
 .spotlight {
