@@ -30,9 +30,9 @@
     --ink-2: #43485e;
     --ink-3: #666d85;
     --ink-4: #8f96ab;
-    --line: rgba(20, 22, 42, 0.09);
+    --line: rgba(20, 22, 42, 0.13);
     --line-strong: rgba(20, 22, 42, 0.16);
-    --grid-strong: rgba(20, 22, 42, 0.13);
+    --grid-strong: rgba(20, 22, 42, 0.22);
 
     /* glass */
     /* 透明玻璃：填充很淡、模糊很小，让背板"看得清"再靠边缘高光立住质感 */
@@ -105,9 +105,9 @@ html[data-theme="dark"] {
     --ink-2: #bfc5da;
     --ink-3: #9ba2ba;
     --ink-4: #737a94;
-    --line: rgba(255, 255, 255, 0.09);
+    --line: rgba(255, 255, 255, 0.11);
     --line-strong: rgba(255, 255, 255, 0.16);
-    --grid-strong: rgba(255, 255, 255, 0.11);
+    --grid-strong: rgba(255, 255, 255, 0.18);
 
     --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.03));
     --glass-bg-2: rgba(255, 255, 255, 0.035);
@@ -142,6 +142,13 @@ html[data-theme="dark"] {
 html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    /*
+     * 显式给 html 一个背景。
+     * 原来只有 body 有背景，靠"body 背景传播到画布"这条规则；
+     * 移动端浏览器对这条规则的处理不一致，配合强制深色时就容易出现
+     * "浅色模式下背景发灰"的现象。写在 html 上就不依赖传播行为了。
+     */
+    background-color: var(--bg-0);
 }
 
 body {
@@ -276,20 +283,52 @@ html[data-theme="dark"] .bg-aurora i { opacity: 0.42; }
     position: absolute;
     inset: 0;
     /*
-     * 网格分两级：每 72px 一条细线，每 4 格（288px）来一条稍亮的主线。
-     * 加主线不只是为了好看 —— 玻璃的折射需要有"直的、有细节的东西"当参照，
+     * 背景纹理全部用 CSS 渐变生成，不放任何栅格图 —— 这样永远不存在
+     * "不同设备尺寸/DPR 下被拉伸、裁切、模糊"的问题。
+     *
+     * 纹理不只是装饰：玻璃的折射需要**直的、有细节的东西**当参照，
      * 光滑渐变被位移几十像素也看不出来。
+     * 具体用哪一套由 <html data-pattern="..."> 决定，见下面几段。
      */
-    background-image:
-        linear-gradient(to right, var(--grid-strong) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--grid-strong) 1px, transparent 1px),
-        linear-gradient(to right, var(--line) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-    background-size: 288px 288px, 288px 288px, 72px 72px, 72px 72px;
     mask-image: radial-gradient(150% 120% at 50% 0%, #000 34%, transparent 96%);
     -webkit-mask-image: radial-gradient(150% 120% at 50% 0%, #000 34%, transparent 96%);
     opacity: 1;
 }
+
+/*
+ * 四套纹理，改 <html data-pattern="..."> 就能换：
+ *   iso      等距网格（默认，工程图纸感，直线被玻璃折射弯折最明显）
+ *   dots     点阵，最安静
+ *   contour  等高线，曲线更有设计感
+ *   none     不要纹理（玻璃会变成纯透明，折射没有参照物）
+ */
+
+/* ---- 纹理：点阵 ---- */
+html[data-pattern="dots"] .bg-grid {
+    background-image:
+        radial-gradient(circle, var(--grid-strong) 1.7px, transparent 1.8px),
+        radial-gradient(circle, var(--line) 1.1px, transparent 1.2px);
+    background-size: 104px 104px, 26px 26px;
+}
+
+/* ---- 纹理：等距网格（默认）---- */
+html[data-pattern="iso"] .bg-grid,
+html:not([data-pattern]) .bg-grid {
+    background-image:
+        repeating-linear-gradient(60deg, var(--line) 0 1px, transparent 1px 34px),
+        repeating-linear-gradient(-60deg, var(--line) 0 1px, transparent 1px 34px),
+        repeating-linear-gradient(0deg, var(--grid-strong) 0 1px, transparent 1px 102px);
+}
+
+/* ---- 纹理：等高线 ---- */
+html[data-pattern="contour"] .bg-grid {
+    background-image:
+        repeating-radial-gradient(circle at 16% 8%, var(--line) 0 1px, transparent 1px 46px),
+        repeating-radial-gradient(circle at 88% 78%, var(--grid-strong) 0 1px, transparent 1px 64px);
+}
+
+/* ---- 不要纹理 ---- */
+html[data-pattern="none"] .bg-grid { display: none; }
 
 .bg-noise {
     position: absolute;

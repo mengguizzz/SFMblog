@@ -961,6 +961,47 @@
     }
 
     /** 把 [data-type] 里的文字一个字一个字打出来（光标用 CSS 画） */
+    /**
+     * 诊断面板：地址后面加 ?debug 就会显示。
+     * 手机上的显示问题没法在模拟器里复现，只能让页面自己把真实环境报出来。
+     */
+    function initDebugPanel() {
+        if (!/[?&]debug/.test(location.search)) return;
+
+        var cs = getComputedStyle(document.documentElement);
+        var rows = [
+            ['主题 (data-theme)', document.documentElement.dataset.theme],
+            ['系统深色偏好', window.matchMedia('(prefers-color-scheme: dark)').matches ? '深色' : '浅色'],
+            ['color-scheme', cs.colorScheme],
+            ['--bg-0', cs.getPropertyValue('--bg-0').trim()],
+            ['html 背景', getComputedStyle(document.documentElement).backgroundColor],
+            ['body 背景', getComputedStyle(document.body).backgroundColor],
+            ['--ink-1', cs.getPropertyValue('--ink-1').trim()],
+            ['视口 / DPR', window.innerWidth + '×' + window.innerHeight + '  @' + window.devicePixelRatio + 'x'],
+            ['UA', navigator.userAgent.slice(0, 110)],
+        ];
+
+        var box = document.createElement('div');
+        box.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:9999;max-width:min(94vw,540px);' +
+            'padding:14px 16px;border-radius:14px;background:rgba(10,12,26,.92);color:#e8ecff;' +
+            'font:12px/1.7 ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;' +
+            'box-shadow:0 12px 40px rgba(0,0,0,.45)';
+        box.innerHTML = '<b style="color:#f472b6">· 诊断信息（?debug）·</b>\n\n' +
+            rows.map(function (r) {
+                return '<span style="color:#8b93b5">' + r[0] + '：</span>' + esc(r[1]);
+            }).join('\n');
+
+        var close = document.createElement('button');
+        close.textContent = '关闭';
+        close.style.cssText = 'position:absolute;right:10px;top:8px;background:none;border:0;' +
+            'color:#8b93b5;font:12px ui-monospace,monospace;cursor:pointer';
+        close.addEventListener('click', function () { box.remove(); });
+
+        box.appendChild(close);
+        document.body.appendChild(box);
+    }
+
+    /** 把 [data-type] 里的文字一个字一个字打出来（光标用 CSS 画） */
     function initTypewriter() {
         var el = $('[data-type]');
         if (!el || prefersLess()) return;
@@ -1030,6 +1071,7 @@
         initTypewriter();
         initEasterEgg();
         initCounter();
+        initDebugPanel();
 
         var afterRender = function () {
             if (window.sfmbObserveReveal) window.sfmbObserveReveal();
