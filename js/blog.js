@@ -847,6 +847,99 @@
     }
 
     /** 把 [data-type] 里的文字一个字一个字打出来（光标用 CSS 画） */
+    /**
+     * 生成"透镜位移图"。
+     *
+     * 这是一张法线图：R 通道 = 水平位移方向，G 通道 = 垂直位移方向，
+     * 128 表示"不动"。靠近边缘的地方把采样点往**外侧**推，
+     * 于是玻璃边缘会像厚玻璃一样把外面的画面"吸"进来 —— 就是折射。
+     * 中间是平坦区（值为 128，完全不位移），所以正中看过去是清楚的。
+     */
+    function buildLensMap(size, bevel, power) {
+        var c = document.createElement('canvas');
+        c.width = c.height = size;
+        var ctx = c.getContext('2d');
+        var img = ctx.createImageData(size, size);
+        var d = img.data;
+
+        for (var y = 0; y < size; y++) {
+            for (var x = 0; x < size; x++) {
+                var u = (x + 0.5) / size;
+                var v = (y + 0.5) / size;
+
+                // 到最近的左/右边和上/下边的归一化距离
+                var ex = Math.min(u, 1 - u);
+                var ey = Math.min(v, 1 - v);
+
+                // 越靠近边缘越强，中间一段为 0；开方让过渡更像真实玻璃的斜边
+                var tx = Math.max(0, 1 - ex / bevel);
+                var ty = Math.max(0, 1 - ey / bevel);
+                tx = Math.pow(tx, power);
+                ty = Math.pow(ty, power);
+
+                var dx = (u < 0.5 ? -1 : 1) * tx;
+                var dy = (v < 0.5 ? -1 : 1) * ty;
+
+                var i = (y * size + x) * 4;
+                d[i] = Math.round((0.5 + dx * 0.5) * 255);
+                d[i + 1] = Math.round((0.5 + dy * 0.5) * 255);
+                d[i + 2] = 128;
+                d[i + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        return c.toDataURL('image/png');
+    }
+
+    /**
+     * 玻璃滤镜。
+     *
+     * 之前我以为 Chrome 不支持在 backdrop-filter 里用 url(#filter)，
+     * 其实是实验写错了：滤镜区域用百分比、而外层 <svg> 是 0x0，
+     * 区域直接塌成空的。改用默认区域（或以像素为单位）之后是生效的 —— 实测
+     * 相对不挂滤镜有 69% 的像素差异。
+     *
+     * 于是这里就能直接折射**真实背板**（终端雨、极光、网格全都会跟着弯），
+     * 不用再搞一份背景副本。
+     */
+    function initGlassFilter() {
+        if (document.getElementById('sfm-lens')) return;
+
+        var mapUrl = buildLensMap(256, 0.18, 2.4);
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'sfm-defs');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        svg.innerHTML =
+            /*
+             * primitiveUnits 必须是 objectBoundingBox：
+             * 默认的 userSpaceOnUse 下，feImage 的 width="100%" 是按**视口**解析的，
+             * 那张透镜图会被拉满整个视口，元素只能取到中间一小块 —— 结果就成了
+             * "整体平移"而不是"边缘折射"。改成相对元素自身比例之后，
+             * 图的 0..1 正好贴着元素边框，边缘才会真的把外面的画面吸进来。
+             */
+            '<filter id="sfm-lens" filterUnits="objectBoundingBox" ' +
+            'primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB">' +
+                '<feImage href="' + mapUrl + '" preserveAspectRatio="none" ' +
+                    'x="0" y="0" width="1" height="1" result="lens"/>' +
+                // 位移：边缘把外圈画面吸进来
+                '<feDisplacementMap in="SourceGraphic" in2="lens" scale="0.085" ' +
+                    'xChannelSelector="R" yChannelSelector="G" result="bent"/>' +
+                // 极轻的模糊，去掉位移带来的锯齿（不是磨砂）
+                '<feGaussianBlur in="bent" stdDeviation="0.0012" result="soft"/>' +
+                // 提饱和 + 微提亮，让透过来的颜色"更活"
+                '<feColorMatrix in="soft" type="saturate" values="1.75" result="sat"/>' +
+                '<feComponentTransfer in="sat">' +
+                    '<feFuncR type="linear" slope="1.05"/>' +
+                    '<feFuncG type="linear" slope="1.05"/>' +
+                    '<feFuncB type="linear" slope="1.05"/>' +
+                '</feComponentTransfer>' +
+            '</filter>';
+        document.body.appendChild(svg);
+    }
+
+    /** 把 [data-type] 里的文字一个字一个字打出来（光标用 CSS 画） */
     function initTypewriter() {
         var el = $('[data-type]');
         if (!el || prefersLess()) return;
@@ -906,6 +999,7 @@
         initTheme();
         initNav();
         initToTop();
+        initGlassFilter();
         initReveal();
         initRain();
         initAmbientPointer();

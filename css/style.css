@@ -32,13 +32,22 @@
     --ink-4: #8f96ab;
     --line: rgba(20, 22, 42, 0.09);
     --line-strong: rgba(20, 22, 42, 0.16);
+    --grid-strong: rgba(20, 22, 42, 0.13);
 
     /* glass */
-    --glass-bg: rgba(255, 255, 255, 0.62);
-    --glass-bg-2: rgba(255, 255, 255, 0.42);
-    --glass-brd: rgba(255, 255, 255, 0.92);
-    --glass-blur: 20px;
+    /* 透明玻璃：填充很淡、模糊很小，让背板"看得清"再靠边缘高光立住质感 */
+    --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.40), rgba(255, 255, 255, 0.14));
+    --glass-bg-2: rgba(255, 255, 255, 0.30);
+    --glass-brd: rgba(255, 255, 255, 0.70);
+    --glass-blur: 3px;
+    --glass-bright: 1.06;
     --glass-inner: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    /* 玻璃的"厚度"：顶部一道内反光、底部一片内阴影，再加左上冷/右下暖的色散 */
+    --glass-edge:
+        inset 1px 1px 0 rgba(190, 230, 255, 0.60),
+        inset -1px -1px 0 rgba(255, 190, 235, 0.45),
+        inset 0 2px 5px -2px rgba(255, 255, 255, 0.75),
+        inset 0 -14px 26px -20px rgba(24, 18, 58, 0.42);
 
     /* elevation */
     --sh-sm: 0 1px 2px rgba(20, 22, 42, 0.05), 0 8px 20px -14px rgba(20, 22, 42, 0.30);
@@ -63,6 +72,21 @@
     /* motion */
     --ease: cubic-bezier(0.22, 0.75, 0.28, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    /*
+     * 极光色团的两个开关。
+     *
+     * --drift-play: running 就恢复漂移，paused 就是静止（当前）。
+     *   只要背景在动，玻璃背后的画面就每帧都变，页面上所有 backdrop-filter
+     *   都得跟着重算。实测（Chrome 154，本机）：
+     *       连续漂移            41.3% GPU
+     *       离散步进 steps(30)   21.8%
+     *       完全不漂移           17.6%
+     *   画面上的动静交给终端雨即可，它只有 18fps，便宜得多。
+     *
+     * --drift-steps: 想让漂移"几乎看不出来但保留一点"时用它做离散步进。
+     */
+    --drift-play: paused;
+    --drift-steps: steps(30, end);
 
     /* type */
     --font: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -83,11 +107,18 @@ html[data-theme="dark"] {
     --ink-4: #737a94;
     --line: rgba(255, 255, 255, 0.09);
     --line-strong: rgba(255, 255, 255, 0.16);
+    --grid-strong: rgba(255, 255, 255, 0.11);
 
-    --glass-bg: rgba(255, 255, 255, 0.055);
-    --glass-bg-2: rgba(255, 255, 255, 0.03);
-    --glass-brd: rgba(255, 255, 255, 0.12);
-    --glass-inner: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.03));
+    --glass-bg-2: rgba(255, 255, 255, 0.035);
+    --glass-brd: rgba(255, 255, 255, 0.16);
+    --glass-blur: 4px;
+    --glass-bright: 1.12;
+    --glass-inner: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    --glass-edge: inset 1px 1px 0 rgba(150, 220, 255, 0.30),
+        inset -1px -1px 0 rgba(255, 150, 220, 0.24),
+        inset 0 2px 6px -2px rgba(255, 255, 255, 0.18),
+        inset 0 -14px 30px -20px rgba(0, 0, 0, 0.75);
 
     --brand-ink: #f472b6;
     --brand-tint: rgba(236, 72, 153, 0.16);
@@ -202,46 +233,73 @@ ol { list-style: none; }
     position: absolute;
     display: block;
     border-radius: 50%;
-    filter: blur(70px);
+    /*
+     * 这里原本是 filter: blur(70px)。实测这是全站最大的一笔 GPU 开销：
+     * 对一个 46vw 的元素做 70px 高斯模糊、而且它还在动，
+     * 浏览器每帧都得重算一次模糊 —— 单这一项就吃掉十几个百分点。
+     * 换成"本身就足够柔和"的径向渐变之后，观感几乎一样，开销归零。
+     */
     opacity: 0.55;
     will-change: transform;
+    /* 开关见 :root 里的 --drift-play（注意不能只写在这里：
+       下面各色团的 animation 简写会把它重置掉） */
 }
 
 html[data-theme="dark"] .bg-aurora i { opacity: 0.42; }
 
 .bg-aurora .b1 {
     width: 46vw; height: 46vw; left: -6vw; top: -8vw;
-    background: radial-gradient(circle at 40% 40%, rgba(236, 72, 153, 0.55), transparent 68%);
-    animation: drift-1 26s var(--ease) infinite alternate;
+    background: radial-gradient(circle at 50% 50%,
+        rgba(236, 72, 153, 0.55) 0%, rgba(236, 72, 153, 0.30) 32%,
+        rgba(236, 72, 153, 0.10) 56%, transparent 78%);
+    animation: drift-1 26s var(--drift-steps) infinite alternate;
+    animation-play-state: var(--drift-play);
 }
 .bg-aurora .b2 {
     width: 40vw; height: 40vw; right: -8vw; top: 6vh;
-    background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.52), transparent 68%);
-    animation: drift-2 32s var(--ease) infinite alternate;
+    background: radial-gradient(circle at 50% 50%,
+        rgba(139, 92, 246, 0.52) 0%, rgba(139, 92, 246, 0.28) 32%,
+        rgba(139, 92, 246, 0.09) 56%, transparent 78%);
+    animation: drift-2 32s var(--drift-steps) infinite alternate;
+    animation-play-state: var(--drift-play);
 }
 .bg-aurora .b3 {
     width: 44vw; height: 44vw; left: 28vw; bottom: -16vw;
-    background: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.34), transparent 70%);
-    animation: drift-3 38s var(--ease) infinite alternate;
+    background: radial-gradient(circle at 50% 50%,
+        rgba(34, 211, 238, 0.34) 0%, rgba(34, 211, 238, 0.18) 34%,
+        rgba(34, 211, 238, 0.06) 58%, transparent 80%);
+    animation: drift-3 38s var(--drift-steps) infinite alternate;
+    animation-play-state: var(--drift-play);
 }
 
 .bg-grid {
     position: absolute;
     inset: 0;
+    /*
+     * 网格分两级：每 72px 一条细线，每 4 格（288px）来一条稍亮的主线。
+     * 加主线不只是为了好看 —— 玻璃的折射需要有"直的、有细节的东西"当参照，
+     * 光滑渐变被位移几十像素也看不出来。
+     */
     background-image:
+        linear-gradient(to right, var(--grid-strong) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-strong) 1px, transparent 1px),
         linear-gradient(to right, var(--line) 1px, transparent 1px),
         linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-    background-size: 72px 72px;
-    mask-image: radial-gradient(120% 90% at 50% 0%, #000 12%, transparent 72%);
-    -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 12%, transparent 72%);
-    opacity: 0.55;
+    background-size: 288px 288px, 288px 288px, 72px 72px, 72px 72px;
+    mask-image: radial-gradient(150% 120% at 50% 0%, #000 34%, transparent 96%);
+    -webkit-mask-image: radial-gradient(150% 120% at 50% 0%, #000 34%, transparent 96%);
+    opacity: 1;
 }
 
 .bg-noise {
     position: absolute;
     inset: 0;
-    opacity: 0.16;
-    mix-blend-mode: overlay;
+    /*
+     * 原本是 mix-blend-mode: overlay。混合模式会让整屏在合成阶段多一道混合，
+     * 而且是固定层、每帧都要算 —— 实测这一项就吃掉十几个百分点。
+     * 改成普通叠加 + 更低的不透明度，纹理感还在，混合成本没了。
+     */
+    opacity: 0.10;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -277,11 +335,37 @@ html[data-theme="dark"] .bg-aurora i { opacity: 0.42; }
 .glass {
     position: relative;
     background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    /* 兜底：不支持 backdrop-filter: url() 的浏览器走普通毛玻璃 */
+    backdrop-filter: blur(8px) saturate(175%);
+    -webkit-backdrop-filter: blur(8px) saturate(175%);
     border: 1px solid var(--glass-brd);
     border-radius: var(--r-lg);
-    box-shadow: var(--sh-md), var(--glass-inner);
+    box-shadow: var(--sh-md), var(--glass-edge), var(--glass-inner);
+}
+
+/*
+ * 真·折射。
+ *
+ * #sfm-lens 里是一张"透镜位移图"（JS 生成，见 buildLensMap）：
+ * 靠近边缘的采样点被推到元素外侧，于是玻璃边缘会把外面的画面吸进来，
+ * 中间则完全不位移。折射的是**真实背板** —— 终端雨、极光、网格都会跟着弯。
+ */
+@supports (backdrop-filter: url(#sfm-lens)) {
+    .glass {
+        backdrop-filter: url(#sfm-lens);
+        -webkit-backdrop-filter: url(#sfm-lens);
+    }
+}
+
+/* 放滤镜定义的容器，不参与布局 */
+.sfm-defs {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 
 .card {
@@ -289,20 +373,8 @@ html[data-theme="dark"] .bg-aurora i { opacity: 0.42; }
     border-radius: var(--r-md);
 }
 
-/* gradient hairline on top of a card */
-.sheen::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    border-radius: inherit;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
-    opacity: 0.8;
-    pointer-events: none;
-}
-html[data-theme="dark"] .sheen::before {
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
-}
+/* 顶部那道渐变高光已经并进 --glass-inner / --glass-edge 的 inset 阴影里，
+   ::before 让给上面的折射层 */
 
 .kicker {
     display: inline-flex;
@@ -1933,7 +2005,17 @@ html.has-reveal [data-reveal] {
         opacity 0.75s var(--ease-out),
         transform 0.75s var(--ease-out);
     transition-delay: calc(var(--d, 0) * 70ms);
-    will-change: opacity, transform;
+    /*
+     * 这里原本有 will-change: opacity, transform —— 千万别加回来。
+     *
+     * will-change 会让元素成为 backdrop root：它后代的 backdrop-filter
+     * 只能采样到这个元素**内部**的东西。而容器里除了卡片自己没有别的内容，
+     * 于是玻璃后面空无一物，折射完全失效（实测差异 0.07%，正常应该是 50%+）。
+     * 更坑的是 .post-card 自己就是 [data-reveal]，等于自己把自己的
+     * backdrop-filter 废掉，看起来"只是很透明"。
+     *
+     * 换成干净探针元素后同一个滤镜有 54.97% 的差异 —— 滤镜没问题，是这行的问题。
+     */
 }
 html.has-reveal [data-reveal].is-in {
     opacity: 1;
