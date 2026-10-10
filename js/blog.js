@@ -1002,6 +1002,125 @@
     }
 
     /** 把 [data-type] 里的文字一个字一个字打出来（光标用 CSS 画） */
+    /**
+     * 看板娘（Live2D）。
+     *
+     * 几个刻意的设计：
+     *   - 只在桌面端加载：要求有真实鼠标指针 + 视口 ≥1024px。
+     *     手机完全不加载 —— 不光是不显示，连那 1MB 的脚本都不去取。
+     *   - 懒加载：等页面空闲再取脚本，不占首屏。
+     *   - 系统开了"减少动态效果"就不加载。
+     *   - 可收起，且记住选择：收起后只留一个小按钮，点了能召唤回来。
+     *
+     * 库选的是 live2d-widgets（MIT，stevenjoezhang/live2d-widget 的维护版）：
+     * 它用的是 Cubism 2 的核心，**不需要 CSP 放开 unsafe-eval**。
+     * 这点是实测出来的 —— 另一个更流行的 oh-my-live2d 内部用 PixiJS，
+     * 在严格 CSP 下会直接报 "does not allow unsafe-eval" 并且渲染不出来。
+     */
+    function initLive2D() {
+        var hasMouse = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        if (!hasMouse || window.innerWidth < 1024 || prefersLess()) return;
+        if (document.getElementById('sfm-pet-btn')) return;
+
+        var PATH = 'https://fastly.jsdelivr.net/npm/live2d-widgets@1.0.1/dist/';
+        var PET_KEY = 'sfmb_pet';
+        var loading = false;
+
+        var wantHidden = false;
+        try { wantHidden = localStorage.getItem(PET_KEY) === 'off'; } catch (e) { }
+
+        function makeButton() {
+            var b = document.getElementById('sfm-pet-btn');
+            if (b) return b;
+            b = document.createElement('button');
+            b.id = 'sfm-pet-btn';
+            b.type = 'button';
+            b.className = 'pet-btn glass';
+            b.title = '唤出看板娘';
+            b.setAttribute('aria-label', '唤出看板娘');
+            b.innerHTML = '<span aria-hidden="true">🐾</span>';
+            b.addEventListener('click', function () {
+                try { localStorage.setItem(PET_KEY, 'on'); } catch (e) { }
+                hideBtn();
+                var toggle = document.getElementById('waifu-toggle');
+                if (toggle) { toggle.click(); } else { mount(); }
+            });
+            document.body.appendChild(b);
+            return b;
+        }
+        function showBtn() {
+            var b = makeButton();
+            requestAnimationFrame(function () { b.classList.add('is-on'); });
+        }
+        function hideBtn() {
+            var b = document.getElementById('sfm-pet-btn');
+            if (b) b.classList.remove('is-on');
+        }
+
+        function start() {
+            loading = false;
+            hideBtn();
+            window.initWidget({
+                waifuPath: PATH + 'waifu-tips.json',
+                cubism2Path: PATH + 'live2d.min.js',
+                // 只用 Cubism 2 模型就够了，省得再放行 cubism.live2d.com
+                cubism5Path: '',
+                // 工具条：换模型 / 换衣服 / 关于 / 关闭
+                tools: ['switch-model', 'switch-texture', 'info', 'quit'],
+                logLevel: 'warn',
+                drag: true,
+            });
+
+            // 关掉之后留一个召唤按钮（widget 自带的 toggle 在左下角，样式跟站点不搭，自己做一个）
+            document.addEventListener('click', function (e) {
+                var t = e.target;
+                if (t && t.closest && t.closest('#waifu-tool-quit, .waifu-tool-quit')) {
+                    try { localStorage.setItem(PET_KEY, 'off'); } catch (err) { }
+                    setTimeout(showBtn, 500);
+                }
+            }, true);
+        }
+
+        function loadCss(href) {
+            var l = document.createElement('link');
+            l.rel = 'stylesheet';
+            l.href = href;
+            document.head.appendChild(l);
+            return Promise.resolve();
+        }
+        function loadModule(src) {
+            return new Promise(function (resolve, reject) {
+                var s = document.createElement('script');
+                s.type = 'module';
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = function () { reject(new Error(src)); };
+                document.head.appendChild(s);
+            });
+        }
+
+        function mount() {
+            if (loading || document.getElementById('waifu')) return;
+            loading = true;
+            Promise.all([
+                loadCss(PATH + 'waifu.css'),
+                loadModule(PATH + 'waifu-tips.js'),
+            ]).then(start).catch(function (e) {
+                loading = false;
+                console.warn('[SFMblog] 看板娘加载失败：', e && e.message);
+            });
+        }
+
+        if (wantHidden) {
+            showBtn();                          // 上次收起了：只留按钮，一个字节都不下
+        } else if ('requestIdleCallback' in window) {
+            requestIdleCallback(mount, { timeout: 4000 });
+        } else {
+            setTimeout(mount, 1600);
+        }
+    }
+
+    /** 把 [data-type] 里的文字一个字一个字打出来（光标用 CSS 画） */
     function initTypewriter() {
         var el = $('[data-type]');
         if (!el || prefersLess()) return;
@@ -1070,6 +1189,7 @@
         initAmbientPointer();
         initTypewriter();
         initEasterEgg();
+        initLive2D();
         initCounter();
         initDebugPanel();
 

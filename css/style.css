@@ -2065,6 +2065,42 @@ a:hover > .footer-img { transform: rotate(-4deg) scale(1.06); }
 }
 
 /* -------------------------------------------------------------- 14. Motion */
+/* -------------------------------------------------------- 13b. 看板娘 */
+
+/* 收起看板娘之后留下的"召唤"按钮（只在桌面端出现） */
+.pet-btn {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 140;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--ink-2);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+    pointer-events: none;
+    transition: opacity 0.4s var(--ease), transform 0.4s var(--ease),
+        border-color 0.3s var(--ease);
+}
+.pet-btn.is-on { opacity: 1; transform: none; pointer-events: auto; }
+.pet-btn:hover { border-color: var(--brand-ring); }
+
+/* 看板娘本体：压到内容之下一点点，别抢正文 */
+#oml2d-stage,
+.oml2d-stage {
+    z-index: 120 !important;
+}
+@media (max-width: 1023px), (hover: none), (pointer: coarse) {
+    .pet-btn { display: none; }
+}
+
 /*
  * 滚动浮现。
  * 注意：初始的"隐藏"状态挂在 html.has-reveal 上，而这个类是由 JS 加的 ——

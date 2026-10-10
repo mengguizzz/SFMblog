@@ -367,6 +367,56 @@ t = 'light';
 > 注意：**不要用 `prefers-color-scheme`**。之前是按系统深浅色偏好来的，
 > 结果手机开着深色模式时，白天访问也是深色，很容易被误认为"背景发灰"的 bug。
 
+### 看板娘（Live2D）
+
+桌面端左下角会有一个 Live2D 看板娘，鼠标悬停能互动、可以拖拽、点工具条换模型 / 换装 / 查看信息 / 收起。
+
+**只在桌面端加载**：要求 `(hover: hover) and (pointer: fine)` 且视口 ≥1024px。
+手机上不是"隐藏"，而是**一个字节都不下载** —— 连那几百 KB 的脚本和模型都不去取。
+系统开了「减少动态效果」时同样不加载。
+
+**收起之后会记住**，下次只留左下角一个小按钮可以召唤回来。
+
+#### 为什么选 live2d-widgets 而不是更流行的 oh-my-live2d
+
+实测出来的：oh-my-live2d 内部用 PixiJS，在严格 CSP 下会直接报
+
+```
+Current environment does not allow unsafe-eval,
+please use @pixi/unsafe-eval module to enable support.
+```
+
+**渲染不出来**，除非把 CSP 放开 `'unsafe-eval'`。而 `live2d-widgets`（stevenjoezhang 的维护版）
+用的是 Cubism 2 核心，同样条件下 **canvas 正常渲染、零 CSP 违规、零报错**。
+
+同一份 CSP 下的对照实验：
+
+| 方案 | canvas | 报错 |
+| --- | --- | --- |
+| oh-my-live2d 0.19.3 | 0 个 | 1 条 unsafe-eval |
+| live2d-widgets 1.0.1 | **800×800 已渲染** | 0 条 |
+
+为了它，CSP 只多放行了 `https://fastly.jsdelivr.net`（脚本 / 样式 / 连接），
+**没有放开 `unsafe-eval`**。
+
+#### ⚠️ GPU 代价：约 23 个百分点
+
+这是加它必须知道的代价 —— Live2D 是持续 60fps 的 WebGL 渲染：
+
+| 状态 | GPU |
+| --- | --- |
+| 看板娘显示中 | 31.0% |
+| 看板娘收起后 | 7.8% |
+
+好的一面是**收起它就等于关掉**（显示 `none` 后渲染就停了），而且这个选择会记住。
+如果你更希望它默认不出现、需要时再召唤，把 `initLive2D()` 里
+`wantHidden` 的初值改成 `true` 即可。
+
+#### 模型来源
+
+默认走 `fghrsh/live2d_api` 的模型库（社区整理的模型合集，**版权归各自作者，
+仅供学习交流**）。要换成自己的模型，改 `initWidget()` 里的 `cdnPath` 或 `modelId`。
+
 ### ⚠️ 一个把整个背景弄丢的坑
 
 **千万不要给 `html` 设 `background-color`。**
