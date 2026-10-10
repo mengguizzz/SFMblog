@@ -399,8 +399,9 @@ please use @pixi/unsafe-eval module to enable support.
 | oh-my-live2d 0.19.3 | 0 个 | 1 条 unsafe-eval |
 | live2d-widgets 1.0.1 | **800×800 已渲染** | 0 条 |
 
-为了它，CSP 只多放行了 `https://fastly.jsdelivr.net`（脚本 / 样式 / 连接），
-**没有放开 `unsafe-eval`**。
+看板娘的组件和模型**已经全部自托管**（见下面「模型来源」），所以它没有让 CSP 多放行
+任何域名 —— 只有 Markdown 渲染用的 `https://cdn.jsdelivr.net`（marked / highlight.js），
+而且**始终没有放开 `unsafe-eval`**。
 
 #### ⚠️ GPU 代价：约 23 个百分点
 
@@ -412,8 +413,7 @@ please use @pixi/unsafe-eval module to enable support.
 | 看板娘收起后 | 7.8% |
 
 好的一面是**收起它就等于关掉**（显示 `none` 后渲染就停了），而且这个选择会记住。
-如果你更希望它默认不出现、需要时再召唤，把 `initLive2D()` 里
-`wantHidden` 的初值改成 `true` 即可。
+所以它是**默认关闭**的：不点那个 🐾 按钮，就一个像素都不渲染。
 
 #### 模型来源
 
@@ -429,6 +429,7 @@ src/live2d/
 │       ├── index.js            Cubism 2 模型加载器
 │       └── index2.js           Cubism 5 模型加载器
 ├── model_list.json             模型清单
+├── CREDITS.md                  组件 / 模型的来源与授权说明
 └── model/Hiyori/               模型本体（约 1.8 MB）
     ├── index.json              （即官方的 Hiyori.model3.json）
     ├── Hiyori.moc3 / Hiyori.2048/ / motions/ / Hiyori.physics3.json …
