@@ -42,13 +42,30 @@ function read_blocks(string $file): array
     return ['raw' => $raw, 'map' => $map];
 }
 
-function write_blocks(string $file, array $raw): void
+/** 按顺序取出每篇文章的正文（已 trim） */
+function bodies(array $data): array
+{
+    $out = [];
+    foreach ($data['map'] as $i) {
+        $out[] = trim($data['raw'][$i]);
+    }
+    return $out;
+}
+
+/**
+ * 用规范格式写回：正文 + 空行 + ---POST--- + 空行 + 正文 + 尾部换行。
+ *
+ * 之所以每次都整体重写，是因为"追加到文件尾部"这种写法会把分隔符前面的换行
+ * 留在上一篇的末尾；删除时那部分换行会残留在文件里，反复增删就会不断堆积空行。
+ * 规范格式让 add / edit / delete 互为逆操作，文件不会越用越乱。
+ */
+function write_bodies(string $file, array $list): void
 {
     $dir = dirname($file);
     if (!is_dir($dir)) {
         mkdir($dir, 0755, true);
     }
-    file_put_contents($file, implode(SEPARATOR, $raw), LOCK_EX);
+    file_put_contents($file, implode("\n\n" . SEPARATOR . "\n\n", $list) . "\n", LOCK_EX);
 }
 
 // --------------------------------------------------------------------- 配置
@@ -147,24 +164,15 @@ $content = (string)($_POST['content'] ?? '');
 $id = isset($_POST['id']) ? (int)$_POST['id'] : -1;
 
 $data  = read_blocks($MD_FILE);
-$raw   = $data['raw'];
-$map   = $data['map'];
-$count = count($map);
+$list  = bodies($data);
+$count = count($list);
 
 if ($action === 'add') {
     if (trim($content) === '') {
         respond(['error' => 'Content is empty.'], 400);
     }
-
-    $clean = "\n\n" . trim($content) . "\n\n";
-    if ($count === 0 || trim(implode('', $raw)) === '') {
-        write_blocks($MD_FILE, [trim($content) . "\n"]);
-    } else {
-        if (!is_dir($BLOG_DIR)) {
-            mkdir($BLOG_DIR, 0755, true);
-        }
-        file_put_contents($MD_FILE, "\n\n" . SEPARATOR . "\n\n" . $clean, FILE_APPEND | LOCK_EX);
-    }
+    $list[] = trim($content);
+    write_bodies($MD_FILE, $list);
     respond(['success' => true, 'message' => 'Post created.', 'id' => $count]);
 }
 
@@ -175,8 +183,8 @@ if ($action === 'edit') {
     if (trim($content) === '') {
         respond(['error' => 'Content is empty.'], 400);
     }
-    $raw[$map[$id]] = "\n\n" . trim($content) . "\n\n";
-    write_blocks($MD_FILE, $raw);
+    $list[$id] = trim($content);
+    write_bodies($MD_FILE, $list);
     respond(['success' => true, 'message' => 'Post updated.', 'id' => $id]);
 }
 
@@ -184,8 +192,8 @@ if ($action === 'delete') {
     if ($id < 0 || $id >= $count) {
         respond(['error' => 'Post not found.'], 404);
     }
-    unset($raw[$map[$id]]);
-    write_blocks($MD_FILE, array_values($raw));
+    unset($list[$id]);
+    write_bodies($MD_FILE, array_values($list));
     respond(['success' => true, 'message' => 'Post deleted.', 'id' => $id]);
 }
 

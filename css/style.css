@@ -729,11 +729,13 @@ html[data-theme="dark"] .theme-toggle .i-moon { display: none; }
 
 .post-card-top {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 14px;
+    gap: 10px 14px;
     margin-bottom: 16px;
 }
+.post-card-top .tag-row { flex: 1 1 auto; min-width: 0; }
+.post-card-top .tag { height: 24px; font-size: 0.74rem; padding: 0 10px; }
 
 .post-date {
     font-family: var(--mono);

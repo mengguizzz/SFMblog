@@ -219,7 +219,7 @@
 
     /* ------------------------------------------------------- index: cards */
     function postCard(post) {
-        var tags = post.tags.slice(0, 1).map(function (t) {
+        var tags = post.tags.map(function (t) {
             return '<span class="tag">' + esc(t) + '</span>';
         }).join('');
 
@@ -229,7 +229,7 @@
 
         return '<article class="post-card glass sheen">' +
             '<a class="post-card-link" href="post.html?id=' + post.id + '">' +
-            '<div class="post-card-top">' + tags +
+            '<div class="post-card-top"><span class="tag-row">' + tags + '</span>' +
             '<time class="post-date" datetime="' + esc(post.dateISO) + '">' + esc(post.date || '未标注日期') + '</time>' +
             '</div>' +
             '<h3 class="post-card-title">' + esc(post.title) + '</h3>' +

@@ -81,6 +81,40 @@ chown -R www-data:www-data blogs src/images
 chmod -R 755 blogs src/images
 ```
 
+### 4. Nginx 参考配置
+
+```nginx
+server {
+    listen 80;
+    server_name your.domain.com;
+
+    root /var/www/sfmblog;
+    index index.html;
+    charset utf-8;
+    client_max_body_size 12m;          # 图床上传上限
+
+    location = /config.php { deny all; }   # 密钥文件永远不对外
+    location ~ /\.          { deny all; }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.5-fpm.sock;   # 按实际版本改
+        fastcgi_read_timeout 120s;
+    }
+
+    location ~* \.(jpg|jpeg|png|gif|webp|svg|css|js|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+}
+```
+
+改完执行 `nginx -t && systemctl reload nginx`。
+
 ## 🎮 使用方法
 
 1. 访问首页 `index.html`。
