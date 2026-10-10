@@ -2257,7 +2257,17 @@ html.has-reveal [data-reveal].is-in {
     color: var(--brand-ink);
 }
 
-/* 评论区是个 panel，内边距跟别的 panel 保持一致，只是标题下面留一点空 */
+/*
+ * 评论区那块 panel。
+ * 上面的 .post-nav 自己只留了 30px 的上边距，评论区紧跟着会显得挤 ——
+ * 这里单独拉开一档（比普通 panel 之间的间距大），让"看完这一篇 → 去上一篇/下一篇"
+ * 和"往下看评论"是两件事。
+ */
+.comments-panel {
+    margin-top: 48px;
+}
+
+/* 评论区内部：标题和 iframe 之间留一点空 */
 #sfm-comments {
     margin-top: 22px;
 }
@@ -2529,6 +2539,8 @@ html.theme-switching *::after {
     .article { padding: 24px 20px 30px; border-radius: var(--r-md); }
     .panel { padding: 24px 20px; border-radius: var(--r-md); }
     .post-nav .next { text-align: left; align-items: flex-start; }
+    /* 窄屏上 48px 太空，收一档但仍旧比 .post-nav 的 30px 显眼 */
+    .comments-panel { margin-top: 36px; }
     .to-top { right: 14px; bottom: 14px; }
     .pane-preview { display: none; }
     .fld-date { flex: 0 0 130px; }
