@@ -10,6 +10,7 @@
     var MD_URL = './blogs/default.md';
     var SEPARATOR = '---POST---';
     var API = './api.php';
+    var DELETED_RE = /<!--\s*DELETED:\s*(.*?)\s*-->/;
 
     var $ = function (sel, root) { return (root || document).querySelector(sel); };
     var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
@@ -56,17 +57,18 @@
     }
 
     /* ----------------------------------------------------------------- parser */
-    var _cache = null;
+    var _all = null;        // 全部文章，含被标记删除的
+    var _visible = null;    // 前台可见的文章
 
     function parsePosts(fullText) {
         var blocks = fullText.split(SEPARATOR);
         var posts = [];
-        var id = 0;
 
-        blocks.forEach(function (block) {
-            // 与 api.php 完全一致：空块不占编号
+        blocks.forEach(function (block, index) {
+            // 与 api.php 完全一致：空块不产生文章
             if (block.trim() === '') return;
 
+            var del = block.match(DELETED_RE);
             var titleMatch = block.match(/^#\s+(.+)$/m);
             var metaMatch = block.match(/<!--\s*DATE:\s*(.*?)\s*\|\s*TAG:\s*(.*?)\s*-->/);
 
@@ -82,7 +84,12 @@
             var text = plainText(body);
 
             posts.push({
-                id: id++,
+                // id 用的是「原始块下标」，不是"第几篇可见文章"。
+                // 删除是原地打 <!-- DELETED --> 标记，块仍然留在原位置，
+                // 所以删掉一篇不会让后面所有文章改号，旧链接不会失效。
+                id: index,
+                deleted: !!del,
+                deletedAt: del ? del[1].trim() : '',
                 title: title,
                 date: date,
                 dateISO: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '',
@@ -98,8 +105,8 @@
         return posts;
     }
 
-    async function getAllPosts(force) {
-        if (_cache && !force) return _cache;
+    async function loadPosts(force) {
+        if (_all && !force) return;
         try {
             var res = await fetch(MD_URL, { cache: 'no-cache' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -108,15 +115,27 @@
             posts.sort(function (a, b) {
                 return (b.dateISO || b.date).localeCompare(a.dateISO || a.date) || (b.id - a.id);
             });
-            _cache = posts;
-            return posts;
+            _all = posts;
+            _visible = posts.filter(function (p) { return !p.deleted; });
         } catch (err) {
             console.error('[SFMblog] 读取 default.md 失败：', err);
-            return [];
+            _all = _all || [];
+            _visible = _visible || [];
         }
     }
 
+    async function getAllPosts(force) {
+        await loadPosts(force);
+        return _visible;
+    }
+
+    async function getAllPostsIncludingDeleted(force) {
+        await loadPosts(force);
+        return _all;
+    }
+
     window.getAllPosts = getAllPosts;
+    window.getAllPostsIncludingDeleted = getAllPostsIncludingDeleted;
 
     /* ------------------------------------------------------------------ theme */
     function currentTheme() {
@@ -489,8 +508,23 @@
         var post = posts.find(function (p) { return String(p.id) === String(id); });
 
         if (!post) {
-            titleEl.textContent = '文章不存在';
-            content.innerHTML = '<p>这篇文章可能已经被删除，或者链接里的 id 已经失效。</p>';
+            var gone = (await getAllPostsIncludingDeleted()).find(function (p) {
+                return String(p.id) === String(id) && p.deleted;
+            });
+
+            if (gone) {
+                titleEl.textContent = '这篇文章已被删除';
+                var admin = false;
+                try { admin = !!sessionStorage.getItem('admin_token'); } catch (e) { }
+                content.innerHTML = '<p>「' + esc(gone.title) + '」已经被放进回收站，暂时不对外显示。</p>' +
+                    (admin
+                        ? '<p>你当前是登录状态，可以到 <a href="console.html">控制台</a> 的「回收站」里把它恢复回来。</p>'
+                        : '');
+            } else {
+                titleEl.textContent = '文章不存在';
+                content.innerHTML = '<p>链接里的 id 可能已经失效，请从 ' +
+                    '<a href="index.html">首页</a> 或 <a href="archive.html">归档</a> 重新进入。</p>';
+            }
             $('#post-meta').innerHTML = '';
             return;
         }

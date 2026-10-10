@@ -77,7 +77,10 @@
 
 <aside class="drawer" id="drawer" aria-hidden="true">
     <div class="drawer-head">
-        <span>Articles</span>
+        <div class="drawer-tabs">
+            <button class="drawer-tab is-on" type="button" data-tab="posts">文章</button>
+            <button class="drawer-tab" type="button" data-tab="trash">回收站</button>
+        </div>
         <button class="tool" id="btn-drawer-close" type="button" aria-label="关闭">✕</button>
     </div>
     <div class="drawer-list" id="drawer-list"></div>
@@ -344,12 +347,105 @@
     $('scrim').addEventListener('click', closeDrawer);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
 
+    var drawerTab = 'posts';
+
+    document.querySelectorAll('.drawer-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            drawerTab = tab.dataset.tab;
+            document.querySelectorAll('.drawer-tab').forEach(function (t) {
+                t.classList.toggle('is-on', t === tab);
+            });
+            loadList();
+        });
+    });
+
+    async function apiCall(fields) {
+        var fd = new FormData();
+        fd.append('token', sessionStorage.getItem('admin_token') || '');
+        Object.keys(fields).forEach(function (k) { fd.append(k, fields[k]); });
+        var res = await fetch('./api.php', { method: 'POST', body: fd });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+        return data;
+    }
+
+    function emptyNote(html) {
+        var d = document.createElement('div');
+        d.className = 'drawer-empty';
+        d.textContent = html;
+        return d;
+    }
+
     async function loadList() {
         var list = $('drawer-list');
+        list.innerHTML = drawerTab === 'trash'
+            ? '<div class="drawer-empty">读取回收站…</div>'
+            : '';
+
+        if (drawerTab === 'trash') {
+            var data;
+            try {
+                data = await apiCall({ action: 'trash' });
+            } catch (e) {
+                list.innerHTML = '';
+                list.appendChild(emptyNote('读取回收站失败：' + e.message));
+                return;
+            }
+            list.innerHTML = '';
+            if (!data.items.length) {
+                list.appendChild(emptyNote('回收站是空的。删除的文章会先放到这里，不会立刻消失。'));
+                return;
+            }
+            data.items.forEach(function (it) {
+                var row = document.createElement('div');
+                row.className = 'drawer-item';
+                row.innerHTML = '<span class="idx"></span><span class="nm"></span><span class="acts"></span>';
+                row.children[0].textContent = '#' + it.id;
+                row.children[1].textContent = it.title + (it.deletedAt ? '  ·  ' + it.deletedAt : '');
+
+                var acts = row.children[2];
+
+                var bRestore = document.createElement('button');
+                bRestore.type = 'button';
+                bRestore.className = 'restore';
+                bRestore.textContent = '恢复';
+                bRestore.addEventListener('click', async function () {
+                    if (!confirm('把「' + it.title + '」恢复到文章列表？')) return;
+                    try {
+                        await apiCall({ action: 'restore', id: it.id });
+                        toast('已恢复', 'ok');
+                        loadList();
+                    } catch (e) {
+                        toast('恢复失败：' + e.message, 'err');
+                    }
+                });
+                acts.appendChild(bRestore);
+
+                var bPurge = document.createElement('button');
+                bPurge.type = 'button';
+                bPurge.className = 'purge';
+                bPurge.textContent = '彻底删除';
+                bPurge.addEventListener('click', async function () {
+                    if (!confirm('彻底删除「' + it.title + '」？\n\n这次是真的从 default.md 里移除，无法再恢复。\n注意：后面的文章编号会前移，已经分享出去的链接可能失效。')) return;
+                    try {
+                        await apiCall({ action: 'trash-purge', id: it.id });
+                        toast('已彻底删除', 'ok');
+                        loadList();
+                    } catch (e) {
+                        toast('删除失败：' + e.message, 'err');
+                    }
+                });
+                acts.appendChild(bPurge);
+
+                list.appendChild(row);
+            });
+            return;
+        }
+
         list.innerHTML = '';
         posts = await getAllPosts();
         if (!posts.length) {
-            list.innerHTML = '<p style="padding:16px;color:rgba(255,255,255,.4);font-size:.9rem">还没有任何文章。</p>';
+            list.appendChild(emptyNote('还没有任何文章。'));
             return;
         }
         posts.forEach(function (p) {
@@ -415,7 +511,7 @@
     publishBtn.addEventListener('click', publish);
 
     deleteBtn.addEventListener('click', async function () {
-        if (!confirm('删除后无法恢复，确定要删除这篇文章吗？')) return;
+        if (!confirm('确定删除这篇文章吗？\n\n它只是被打上删除标记、不再对外显示，原文还留在 default.md 里，可以随时恢复。\n其它文章的编号不会变，已经分享出去的链接不受影响。')) return;
         var token = sessionStorage.getItem('admin_token');
         if (!token) { toast('授权已失效', 'err'); return; }
         var fd = new FormData();
