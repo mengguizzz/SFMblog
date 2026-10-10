@@ -2097,6 +2097,12 @@ a:hover > .footer-img { transform: rotate(-4deg) scale(1.06); }
 .oml2d-stage {
     z-index: 120 !important;
 }
+
+/* 库自带一个左边的小切换柄，我们已经有自己的 🐾 按钮了，把它藏掉免得多一个 */
+#waifu-toggle { display: none !important; }
+
+/* 看板娘本体：压在正文之上（不然工具条点不到），但别盖住导航和阅读进度条 */
+#waifu { z-index: 120 !important; }
 @media (max-width: 1023px), (hover: none), (pointer: coarse) {
     .pet-btn { display: none; }
 }

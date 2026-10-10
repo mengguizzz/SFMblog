@@ -1026,8 +1026,22 @@
         var PET_KEY = 'sfmb_pet';
         var loading = false;
 
-        var wantHidden = false;
-        try { wantHidden = localStorage.getItem(PET_KEY) === 'off'; } catch (e) { }
+        /*
+         * ↓↓↓ 想换模型改这两个值 ↓↓↓
+         *
+         * MODEL_CDN：模型仓库地址，要求里面有 model_list.json 和 textures.cache。
+         *            默认用 fghrsh/live2d_api（社区整理的合集，版权归各自作者，仅供学习）。
+         *            想用自己的模型：把模型文件夹传到站点的 src/live2d/ 下，
+         *            然后把它改成 './src/live2d/'。
+         * MODEL_ID：用仓库里的第几个模型（从 0 开始）。不确定有哪些，
+         *           可以打开 MODEL_CDN + 'model_list.json' 看列表。
+         */
+        var MODEL_CDN = 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/';
+        var MODEL_ID = 0;
+
+        // 默认关闭：只有你点过"开启"才自动加载，免得占地方 / 吃 GPU
+        var wantOn = false;
+        try { wantOn = localStorage.getItem(PET_KEY) === 'on'; } catch (e) { }
 
         function makeButton() {
             var b = document.getElementById('sfm-pet-btn');
@@ -1065,6 +1079,8 @@
                 cubism2Path: PATH + 'live2d.min.js',
                 // 只用 Cubism 2 模型就够了，省得再放行 cubism.live2d.com
                 cubism5Path: '',
+                cdnPath: MODEL_CDN,
+                modelId: MODEL_ID,
                 // 工具条：换模型 / 换衣服 / 关于 / 关闭
                 tools: ['switch-model', 'switch-texture', 'info', 'quit'],
                 logLevel: 'warn',
@@ -1111,8 +1127,8 @@
             });
         }
 
-        if (wantHidden) {
-            showBtn();                          // 上次收起了：只留按钮，一个字节都不下
+        if (!wantOn) {
+            showBtn();                          // 默认关闭：只留按钮，一个字节都不下
         } else if ('requestIdleCallback' in window) {
             requestIdleCallback(mount, { timeout: 4000 });
         } else {

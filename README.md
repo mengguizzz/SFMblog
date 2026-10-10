@@ -377,6 +377,9 @@ t = 'light';
 
 **收起之后会记住**，下次只留左下角一个小按钮可以召唤回来。
 
+**默认关闭**：首次访问左下角只有一个 🐾 按钮，点它才加载（免得占地方、也免得白吃 GPU）。
+点过之后会记住"已开启"，下次自动出现；再点工具条里的 ✕ 收起，就又回到关闭状态。
+
 #### 为什么选 live2d-widgets 而不是更流行的 oh-my-live2d
 
 实测出来的：oh-my-live2d 内部用 PixiJS，在严格 CSP 下会直接报
@@ -416,6 +419,33 @@ please use @pixi/unsafe-eval module to enable support.
 
 默认走 `fghrsh/live2d_api` 的模型库（社区整理的模型合集，**版权归各自作者，
 仅供学习交流**）。要换成自己的模型，改 `initWidget()` 里的 `cdnPath` 或 `modelId`。
+
+#### 怎么换模型
+
+打开 `js/blog.js`，找到 `initLive2D()` 里这两个值：
+
+```js
+var MODEL_CDN = 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/';
+var MODEL_ID  = 0;
+```
+
+`MODEL_ID` 就是模型编号。默认仓库里可选：
+
+| MODEL_ID | 模型 |
+| --- | --- |
+| **0** | Potion-Maker/Pio（默认） |
+| 1 | Potion-Maker/Tia |
+| 2 | bilibili-live/22 |
+| 3 | bilibili-live/33 |
+| 4 | ShizukuTalk（48 + 睡衣两套，可用换装按钮切） |
+| 5 | 海王星涅普顿（多套衣服） |
+| 6 | KantaiCollection/murakumo |
+
+想看最新列表，直接访问 `MODEL_CDN + 'model_list.json'`。
+
+**想用自己的模型**：把模型文件夹传到站点的 `src/live2d/` 下（目录里要有
+`model_list.json` 和模型各自的 `textures.cache`），然后把
+`MODEL_CDN` 改成 `'./src/live2d/'`。
 
 ### ⚠️ 一个把整个背景弄丢的坑
 
