@@ -200,8 +200,45 @@
         var btn = $('#theme-toggle');
         applyTheme(currentTheme(), false);
         if (!btn) return;
-        btn.addEventListener('click', function () {
-            applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
+        btn.addEventListener('click', function () { switchTheme(btn); });
+    }
+
+    /**
+     * 主题切换。
+     * 有 View Transitions 的浏览器：从按钮中心扩散一个圆，把新主题"擦"出来。
+     * 没有的（或用户开了减少动态效果）：直接切，交给 CSS 的过渡去平滑。
+     */
+    function switchTheme(btn) {
+        var next = currentTheme() === 'dark' ? 'light' : 'dark';
+        var canWipe = typeof document.startViewTransition === 'function' && !prefersLess();
+
+        if (!canWipe) {
+            applyTheme(next, true);
+            return;
+        }
+
+        var box = btn ? btn.getBoundingClientRect() : null;
+        var x = box ? box.left + box.width / 2 : window.innerWidth - 44;
+        var y = box ? box.top + box.height / 2 : 40;
+
+        // 半径取到"离按钮最远的那个角"，保证圆一定能盖满整屏
+        var radius = Math.hypot(
+            Math.max(x, window.innerWidth - x),
+            Math.max(y, window.innerHeight - y)
+        );
+
+        var root = document.documentElement;
+        root.style.setProperty('--wipe-x', x.toFixed(1) + 'px');
+        root.style.setProperty('--wipe-y', y.toFixed(1) + 'px');
+        root.style.setProperty('--wipe-r', Math.ceil(radius) + 'px');
+        root.classList.add('theme-wipe');
+
+        var transition = document.startViewTransition(function () { applyTheme(next, true); });
+        transition.finished.finally(function () {
+            root.classList.remove('theme-wipe');
+            root.style.removeProperty('--wipe-x');
+            root.style.removeProperty('--wipe-y');
+            root.style.removeProperty('--wipe-r');
         });
     }
 

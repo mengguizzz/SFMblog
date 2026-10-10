@@ -1963,16 +1963,16 @@ html[data-theme="dark"][data-rain="off"] .rain { opacity: 0; }
     position: fixed;
     left: 0;
     top: 0;
-    width: 620px;
-    height: 620px;
-    margin: -310px 0 0 -310px;
+    width: 380px;
+    height: 380px;
+    margin: -190px 0 0 -190px;
     z-index: -1;
     border-radius: 50%;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.6s var(--ease);
     background: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.20), rgba(139, 92, 246, 0.13) 45%, transparent 68%);
-    filter: blur(26px);
+    filter: blur(20px);
     will-change: transform;
 }
 html[data-pointer="on"] .spotlight { opacity: 1; }
@@ -2035,6 +2035,40 @@ html[data-pointer="on"] .glass:hover::after { opacity: 1; }
 }
 .btn-primary > * { position: relative; }
 @keyframes spin { to { transform: rotate(1turn); } }
+
+/* ---------------------------------------------------------------------------
+   主题切换：从按钮位置向外扩张的圆形擦除
+   浏览器原生的 View Transitions：把切换前后的画面各截一张，
+   让"新画面"用一个从点击位置扩散的圆把它擦出来。
+   最外层套 @supports，不支持的浏览器自动退回普通切换。
+--------------------------------------------------------------------------- */
+@supports (view-transition-name: none) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        /* 关掉默认的交叉淡入，否则会和圆形擦除叠在一起发灰 */
+        animation: none;
+        mix-blend-mode: normal;
+    }
+    ::view-transition-old(root) { z-index: 1; }
+    ::view-transition-new(root) { z-index: 2; }
+
+    /* 只有我们主动加了这个类才播放 */
+    html.theme-wipe::view-transition-new(root) {
+        animation: theme-wipe 560ms var(--ease-out);
+    }
+    html.theme-wipe::view-transition-old(root) {
+        animation: theme-hold 560ms steps(1, end);
+    }
+}
+
+@keyframes theme-wipe {
+    from { clip-path: circle(0px at var(--wipe-x, 50%) var(--wipe-y, 0%)); }
+    to { clip-path: circle(var(--wipe-r, 160vmax) at var(--wipe-x, 50%) var(--wipe-y, 0%)); }
+}
+@keyframes theme-hold {
+    from { opacity: 1; }
+    to { opacity: 1; }
+}
 
 /* 悬浮时扫过卡片的一道细光 */
 .post-card-link::before {
