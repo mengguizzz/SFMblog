@@ -1,53 +1,17 @@
-# src/live2d 素材来源
+# 这个目录里的素材来源
 
-这个目录里的东西**全部自托管**：跑起来不请求任何第三方域名，也不依赖 CDN。
-所以要换成别的模型，或者想彻底删掉看板娘，直接动这里就行。
+完整清单（含许可证）在仓库根目录的 **[CREDITS.md](../../CREDITS.md)**，这里只留最要紧的一句：
 
-## 组件（`widget/`）
+> `model/Elaina/` 是 **MNDIA** 配布的《魔女之旅》伊蕾娜 Live2D 模型，
+> 出自 <https://www.aplaybox.com/details/model/0MAXIOhAZAUw>。
+> 作者规则：**禁止商用**、允许二次配布、允许修改。角色版权归《魔女之旅》原作者与插画师。
 
-| 文件 | 来源 |
-| --- | --- |
-| `waifu.css` / `waifu-tips.js` / `waifu-tips.json` | [stevenjoezhang/live2d-widgets](https://github.com/stevenjoezhang/live2d-widgets) `1.0.1`（MIT） |
-| `live2d.min.js` | 同上，Cubism 2 加载器 |
-| `live2dcubismcore.min.js` | [Live2D/CubismWebFramework](https://github.com/Live2D/CubismWebFramework) 的 Cubism 5 核心 |
-| `chunk/index.js` `chunk/index2.js` | 上面两套模型加载器（按体积拆过，方便按需下载） |
+`widget/` 是 [live2d-widgets](https://github.com/stevenjoezhang/live2d-widgets)（MIT）
+加上 Live2D Inc. 的 Cubism 运行时，两者都自托管在本目录，运行时不会请求第三方域名。
 
-## 模型（`model/Elaina/`）
+**想换模型**：把模型目录放进 `model/<名字>/`（里面要有 `index.json` 和它引用的
+`.moc` / `.moc3`、贴图、动作），再改上一层的 `model_list.json`，最后把
+`js/blog.js` 里的 `MODEL_ID` 指到它。
 
-**《魔女之旅》伊蕾娜**，作者 **MNDIA**，原帖：
-
-- 配布页：<https://www.aplaybox.com/details/model/0MAXIOhAZAUw>（模之屋 / Aplaybox，2023-01-04 发布）
-- 包内文件名是 `LSS.*`（`LSS1.1_by_MNDIA.zip`），本目录只是把 `LSS.model3.json`
-  改名为 `index.json`、贴图路径改了一下，其余文件原样保留
-
-**作者在配布页写明的规则**（这是能不能用的依据）：
-
-| 规则 | 说明 |
-| --- | --- |
-| 禁止商用 | ❗**不能用于任何商业用途** |
-| 允许二次配布 | 可以转载 / 打包分发 |
-| 允许修改模型 | 可以改 |
-| 使用无需书写完整借物表 | 不强制要求写全套借物表（本站还是写了） |
-| 允许用于制作视频之外的用途 | 不只是做视频，网页这类用途也允许 |
-
-> 角色「伊蕾娜」出自《魔女之旅》（作者：白石定規 / 插画：あずーる），
-> 角色本身的版权归原作者与出版社，模型是粉丝二创。
-> **本站是非商业的个人博客**，符合作者的配布规则；如果你要拿去商用，得另外找作者授权。
-
-贴图也压过：4096×2048（1.9 MB）→ 1024×512（227 KB）——看板娘显示尺寸只有 250px，看不出差别。
-这个模型是 Cubism 5（`.moc3`），没有动作文件，所以它不会自己动，但有物理（头发 / 衣服会晃）和眨眼。
-
-> 早先默认用的是 Live2D 官方示例模型 Hiyori（`Live2D/CubismWebSamples`，
-> 依据 Live2D 免费素材利用许偌使用）。现在仓库里只留伊蕾娜一个模型，Hiyori 已经删掉了；
-> 想加回来的话，把模型目录放进 `model/` 再改 `model_list.json` 就行。
-
-## 想换模型
-
-把新模型目录放进 `model/<名字>/`（里面要有 `index.json`，以及它引用的
-`.moc` / `.moc3`、贴图、动作等），再改上一层的 `model_list.json`。
-组件靠 `index.json` 里有没有 `Version === 3` / `FileReferences` 判断走
-Cubism 5（`.moc3`）还是 Cubism 2（`.moc`）——**两套核心都已自托管**，不用联网取 SDK。
-
-> ⚠️ 注意：**换个下载站并不等于没有版权问题**。
-> 社区合集（如 `fghrsh/live2d_api`）里很多是游戏角色提取物，版权归各自原作者。
-> 想省心就用官方示例模型、自己捏，或者在 BOOTH 之类的地方买一份带授权的。
+> ⚠️ 换个下载站不等于没有版权问题。社区合集（比如 `fghrsh/live2d_api`）里很多是
+> 游戏角色提取物，版权归各自原作者。省心的路只有三条：官方示例模型、自己捏、去 BOOTH 买。
