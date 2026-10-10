@@ -7,10 +7,8 @@
 (function () {
     'use strict';
 
-    var MD_URL = './blogs/default.md';
-    var SEPARATOR = '---POST---';
     var API = './api.php';
-    var DELETED_RE = /<!--\s*DELETED:\s*(.*?)\s*-->/;
+    var SESSION_KEY = 'sfmb_sid';          // 浏览器里只存会话 id，不存明文密码
 
     var $ = function (sel, root) { return (root || document).querySelector(sel); };
     var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
@@ -22,120 +20,168 @@
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    function readMinutes(text) {
-        var cjk = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
-        var words = (text.replace(/[\u4e00-\u9fa5]/g, ' ').match(/[A-Za-z0-9_]+/g) || []).length;
-        return Math.max(1, Math.round(cjk / 400 + words / 200));
+    /* ---------------------------------------------------- Markdown 安全渲染 */
+
+    // 允许保留的标签。markdown 里写原始 HTML 时，只放行这些。
+    var OK_TAGS = {
+        A: 1, P: 1, BR: 1, HR: 1, SPAN: 1, DIV: 1,
+        H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1,
+        STRONG: 1, B: 1, EM: 1, I: 1, U: 1, S: 1, DEL: 1, MARK: 1, SMALL: 1, SUB: 1, SUP: 1,
+        UL: 1, OL: 1, LI: 1, DL: 1, DT: 1, DD: 1,
+        BLOCKQUOTE: 1, PRE: 1, CODE: 1, KBD: 1, SAMP: 1,
+        TABLE: 1, THEAD: 1, TBODY: 1, TFOOT: 1, TR: 1, TH: 1, TD: 1, CAPTION: 1,
+        IMG: 1, FIGURE: 1, FIGCAPTION: 1, DETAILS: 1, SUMMARY: 1, INPUT: 1,
+    };
+
+    // 这些标签连同内容一起丢掉，不是拆掉标签保留文字
+    var KILL_TAGS = {
+        SCRIPT: 1, STYLE: 1, IFRAME: 1, FRAME: 1, FRAMESET: 1, OBJECT: 1, EMBED: 1,
+        APPLET: 1, FORM: 1, INPUT_TYPE_FILE: 0, LINK: 1, META: 1, BASE: 1,
+        SVG: 1, MATH: 1, TEMPLATE: 1, NOSCRIPT: 1, TITLE: 1, HEAD: 1,
+    };
+
+    var OK_ATTR = {
+        href: 1, src: 1, alt: 1, title: 1, class: 1, id: 1, colspan: 1, rowspan: 1,
+        start: 1, datetime: 1, loading: 1, decoding: 1, target: 1, rel: 1,
+        type: 1, checked: 1, disabled: 1, align: 1, width: 1, height: 1,
+    };
+
+    function isSafeUrl(value) {
+        var s = String(value == null ? '' : value).trim()
+            .replace(/[\u0000-\u001f\u007f\s]/g, '').toLowerCase();
+        if (!s) return false;
+        if (/^(javascript|vbscript|data|blob|file):/.test(s)) return false;
+        if (/^(https?:|mailto:|\/\/)/.test(s)) return true;
+        if (/^[/#?.]/.test(s)) return true;
+        return s.indexOf(':') === -1;              // 纯相对路径
     }
 
-    /* 把 Markdown 压成一行纯文本，用于摘要 */
-    function plainText(md) {
-        return md
-            .replace(/```[\s\S]*?```/g, ' ')
-            .replace(/~~~[\s\S]*?~~~/g, ' ')
-            .replace(/<!--[\s\S]*?-->/g, ' ')
-            .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-            .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-            .replace(/^\s{0,3}#{1,6}\s+.*$/gm, ' ')
-            .replace(/^\s{0,3}=+\s*$/gm, ' ')
-            .replace(/^\s{0,3}>+\s?/gm, ' ')
-            .replace(/^\s*([-*+]|\d+\.)\s+/gm, ' ')
-            .replace(/^\s*\|.*\|\s*$/gm, ' ')
-            .replace(/^\s*([-*_]\s*){3,}$/gm, ' ')
-            .replace(/`([^`]*)`/g, '$1')
-            .replace(/[*_~]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
+    /**
+     * 白名单清洗 marked 的输出。
+     *
+     * marked 默认会把 markdown 里的原始 HTML 原样吐出来，而前端是 innerHTML 渲染的，
+     * 所以一篇 `<img src=x onerror=...>` 就能变成持久化 XSS——配合"token 就是密码"
+     * 的设计，可以反过来把管理员的密码读走。这里把危险标签、on* 事件和内联协议全部剥掉。
+     */
+    function sanitizeHtml(html) {
+        var doc = new DOMParser().parseFromString(String(html), 'text/html');
+
+        (function clean(node) {
+            var kids = Array.prototype.slice.call(node.childNodes);
+            for (var i = 0; i < kids.length; i++) {
+                var el = kids[i];
+                if (el.nodeType === 8) { el.remove(); continue; }   // 注释
+                if (el.nodeType !== 1) continue;
+
+                if (KILL_TAGS[el.tagName]) { el.remove(); continue; }
+
+                if (!OK_TAGS[el.tagName]) {
+                    // 不在白名单：拆掉标签本身，把里面的内容提上来
+                    var parent = el.parentNode;
+                    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                    parent.removeChild(el);
+                    clean(parent);          // 提到外面的内容还得再扫一遍
+                    continue;
+                }
+
+                Array.prototype.slice.call(el.attributes).forEach(function (attr) {
+                    var name = attr.name.toLowerCase();
+                    var isUrl = (name === 'href' || name === 'src');
+                    if (name.indexOf('on') === 0 || !OK_ATTR[name] || (isUrl && !isSafeUrl(attr.value))) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+
+                if (el.tagName === 'A') {
+                    el.setAttribute('rel', 'noopener noreferrer');
+                    if (el.getAttribute('target') === '_blank') el.setAttribute('target', '_blank');
+                }
+                clean(el);
+            }
+        })(doc.body);
+
+        return doc.body.innerHTML;
     }
 
-    function tagList(raw) {
-        if (!raw) return [];
-        return String(raw)
-            .split(/[,，;；]/)
-            .map(function (t) { return t.trim(); })
-            .filter(Boolean);
+    /** 全站唯一的 Markdown 入口：解析 + 清洗 */
+    function renderMarkdown(src) {
+        if (!window.marked) return '<pre>' + esc(src) + '</pre>';
+        return sanitizeHtml(marked.parse(String(src == null ? '' : src), { gfm: true, breaks: true }));
     }
+
+    window.renderMarkdown = renderMarkdown;
+    window.sfmbSessionKey = SESSION_KEY;
+    window.sfmbIsAdmin = function () {
+        try { return !!sessionStorage.getItem(SESSION_KEY); } catch (e) { return false; }
+    };
 
     /* ----------------------------------------------------------------- parser */
-    var _all = null;        // 全部文章，含被标记删除的
-    var _visible = null;    // 前台可见的文章
+    /*
+     * 解析全部在服务端完成（api.php?action=list / post / all）。
+     * 以前是浏览器 fetch 整份 blogs/default.md 再自己切割 ——
+     * 那等于把整个数据库公开下载：已删除的文章、还没发布的草稿，
+     * 任何人打开开发者工具都能拉走。现在只按需返回该看到的字段。
+     */
+    var _visible = null;
 
-    function parsePosts(fullText) {
-        var blocks = fullText.split(SEPARATOR);
-        var posts = [];
-
-        blocks.forEach(function (block, index) {
-            // 与 api.php 完全一致：空块不产生文章
-            if (block.trim() === '') return;
-
-            var del = block.match(DELETED_RE);
-            var titleMatch = block.match(/^#\s+(.+)$/m);
-            var metaMatch = block.match(/<!--\s*DATE:\s*(.*?)\s*\|\s*TAG:\s*(.*?)\s*-->/);
-
-            var title = titleMatch ? titleMatch[1].trim() : '无标题文章';
-            var date = metaMatch ? metaMatch[1].trim() : '';
-            var tags = tagList(metaMatch ? metaMatch[2] : '');
-
-            var body = block
-                .replace(/^#\s+(.+)$/m, '')
-                .replace(/<!--[\s\S]*?-->/g, '')
-                .trim();
-
-            var text = plainText(body);
-
-            posts.push({
-                // id 用的是「原始块下标」，不是"第几篇可见文章"。
-                // 删除是原地打 <!-- DELETED --> 标记，块仍然留在原位置，
-                // 所以删掉一篇不会让后面所有文章改号，旧链接不会失效。
-                id: index,
-                deleted: !!del,
-                deletedAt: del ? del[1].trim() : '',
-                title: title,
-                date: date,
-                dateISO: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '',
-                tag: tags[0] || 'Blog',
-                tags: tags.length ? tags : ['Blog'],
-                body: body,
-                rawContent: block.trim(),
-                summary: text.length > 110 ? text.slice(0, 110) + '…' : text,
-                minutes: readMinutes(body)
-            });
-        });
-
-        return posts;
+    function normalizePost(p) {
+        var tags = (p.tags && p.tags.length) ? p.tags : ['Blog'];
+        return {
+            id: p.id,
+            title: p.title || '无标题文章',
+            date: p.date || '',
+            dateISO: p.dateISO || '',
+            tag: tags[0],
+            tags: tags,
+            summary: p.summary || '',
+            minutes: p.minutes || 1,
+            deleted: !!p.deleted,
+            deletedAt: p.deletedAt || '',
+            body: p.body || ''
+        };
     }
 
-    async function loadPosts(force) {
-        if (_all && !force) return;
+    /** 公开列表：只有元信息，没有正文 */
+    async function getAllPosts(force) {
+        if (_visible && !force) return _visible;
         try {
-            var res = await fetch(MD_URL, { cache: 'no-cache' });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            var text = await res.text();
-            var posts = parsePosts(text);
-            posts.sort(function (a, b) {
-                return (b.dateISO || b.date).localeCompare(a.dateISO || a.date) || (b.id - a.id);
-            });
-            _all = posts;
-            _visible = posts.filter(function (p) { return !p.deleted; });
+            var res = await fetch(API + '?action=list', { cache: 'no-cache' });
+            var data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || ('HTTP ' + res.status));
+            _visible = (data.items || []).map(normalizePost);
         } catch (err) {
-            console.error('[SFMblog] 读取 default.md 失败：', err);
-            _all = _all || [];
+            console.error('[SFMblog] 读取文章列表失败：', err);
             _visible = _visible || [];
         }
-    }
-
-    async function getAllPosts(force) {
-        await loadPosts(force);
         return _visible;
     }
 
-    async function getAllPostsIncludingDeleted(force) {
-        await loadPosts(force);
-        return _all;
+    /** 单篇文章（含正文）。被删或不存在时返回 { error, deleted } */
+    async function getPost(id) {
+        try {
+            var res = await fetch(API + '?action=post&id=' + encodeURIComponent(id), { cache: 'no-cache' });
+            var data = await res.json().catch(function () { return {}; });
+            if (res.ok && data.success) return { post: normalizePost(data.post) };
+            return { error: data.error || ('HTTP ' + res.status), deleted: !!data.deleted };
+        } catch (err) {
+            return { error: '网络错误' };
+        }
+    }
+
+    /** 控制台专用：带登录态，能拿到回收站里的文章和正文 */
+    async function getAdminPosts() {
+        var fd = new FormData();
+        fd.append('action', 'all');
+        fd.append('sid', sessionStorage.getItem(SESSION_KEY) || '');
+        var res = await fetch(API, { method: 'POST', body: fd });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) throw new Error(data.error || ('HTTP ' + res.status));
+        return (data.items || []).map(normalizePost);
     }
 
     window.getAllPosts = getAllPosts;
-    window.getAllPostsIncludingDeleted = getAllPostsIncludingDeleted;
+    window.getPost = getPost;
+    window.getAdminPosts = getAdminPosts;
 
     /* ------------------------------------------------------------------ theme */
     function currentTheme() {
@@ -504,20 +550,13 @@
             return;
         }
 
-        var posts = await getAllPosts();
-        var post = posts.find(function (p) { return String(p.id) === String(id); });
+        var fetched = await getPost(id);
 
-        if (!post) {
-            var gone = (await getAllPostsIncludingDeleted()).find(function (p) {
-                return String(p.id) === String(id) && p.deleted;
-            });
-
-            if (gone) {
+        if (!fetched.post) {
+            if (fetched.deleted) {
                 titleEl.textContent = '这篇文章已被删除';
-                var admin = false;
-                try { admin = !!sessionStorage.getItem('admin_token'); } catch (e) { }
-                content.innerHTML = '<p>「' + esc(gone.title) + '」已经被放进回收站，暂时不对外显示。</p>' +
-                    (admin
+                content.innerHTML = '<p>它已经被放进回收站，暂时不对外显示。</p>' +
+                    (window.sfmbIsAdmin()
                         ? '<p>你当前是登录状态，可以到 <a href="console.html">控制台</a> 的「回收站」里把它恢复回来。</p>'
                         : '');
             } else {
@@ -528,6 +567,9 @@
             $('#post-meta').innerHTML = '';
             return;
         }
+
+        var post = fetched.post;
+        var posts = await getAllPosts();
 
         document.title = post.title + ' · 梦归の小站';
         var desc = document.querySelector('meta[name="description"]');
@@ -545,19 +587,15 @@
             }).join('');
 
         // 管理员：编辑入口
-        try {
-            if (sessionStorage.getItem('admin_token')) {
-                var chip = document.createElement('a');
-                chip.className = 'edit-chip';
-                chip.href = 'console.html?edit_id=' + post.id;
-                chip.textContent = '✏️ 编辑此文';
-                meta.appendChild(chip);
-            }
-        } catch (e) { }
+        if (window.sfmbIsAdmin()) {
+            var chip = document.createElement('a');
+            chip.className = 'edit-chip';
+            chip.href = 'console.html?edit_id=' + post.id;
+            chip.textContent = '✏️ 编辑此文';
+            meta.appendChild(chip);
+        }
 
-        content.innerHTML = window.marked
-            ? marked.parse(post.body, { gfm: true, breaks: true })
-            : '<pre>' + esc(post.body) + '</pre>';
+        content.innerHTML = renderMarkdown(post.body);
 
         var used = {};
         decorateContent(content, used);

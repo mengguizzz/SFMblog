@@ -31,6 +31,7 @@
     <button class="cbtn" id="btn-reset" type="button" title="清空并新建一篇">新建</button>
     <button class="cbtn" id="btn-delete" type="button" title="删除当前文章" hidden>删除</button>
     <a href="index.html" class="cbtn" title="返回首页">首页</a>
+    <button class="cbtn" id="btn-logout" type="button" title="退出登录，并让这个会话立即失效">退出</button>
     <button class="cbtn cbtn-primary" id="btn-publish" type="button">发 布</button>
 </header>
 
@@ -135,7 +136,7 @@
             return;
         }
         if (!window.marked) { preview.textContent = input.value; return; }
-        preview.innerHTML = marked.parse(input.value || '');
+        preview.innerHTML = renderMarkdown(input.value || '');
         preview.querySelectorAll('pre code').forEach(function (b) {
             if (window.hljs) { try { hljs.highlightElement(b); } catch (e) { } }
         });
@@ -284,10 +285,10 @@
 
     /* ---------------- image upload ---------------- */
     async function uploadImage(file) {
-        var token = sessionStorage.getItem('admin_token');
+        var token = sessionStorage.getItem(window.sfmbSessionKey || 'sfmb_sid');
         if (!token) { toast('未检测到授权，请重新登录', 'err'); return null; }
         var fd = new FormData();
-        fd.append('token', token);
+        fd.append('sid', token);
         fd.append('action', 'upload');
         fd.append('image', file);
         try {
@@ -361,7 +362,7 @@
 
     async function apiCall(fields) {
         var fd = new FormData();
-        fd.append('token', sessionStorage.getItem('admin_token') || '');
+        fd.append('sid', sessionStorage.getItem(window.sfmbSessionKey || 'sfmb_sid') || '');
         Object.keys(fields).forEach(function (k) { fd.append(k, fields[k]); });
         var res = await fetch('./api.php', { method: 'POST', body: fd });
         var data = await res.json().catch(function () { return {}; });
@@ -443,7 +444,7 @@
         }
 
         list.innerHTML = '';
-        posts = await getAllPosts();
+        posts = (await getAdminPosts()).filter(function (p) { return !p.deleted; });
         if (!posts.length) {
             list.appendChild(emptyNote('还没有任何文章。'));
             return;
@@ -474,12 +475,12 @@
         if (!title || !content.trim()) { toast('标题和内容不能为空', 'err'); return; }
         if (!date) { date = new Date().toISOString().slice(0, 10); dateEl.value = date; }
 
-        var token = sessionStorage.getItem('admin_token');
+        var token = sessionStorage.getItem(window.sfmbSessionKey || 'sfmb_sid');
         if (!token) { toast('授权已失效，请重新登录', 'err'); setTimeout(function () { location.href = 'login.html'; }, 900); return; }
 
         var raw = '# ' + title + '\n<!-- DATE: ' + date + ' | TAG: ' + (tag || 'Blog') + ' -->\n\n' + content.trim();
         var fd = new FormData();
-        fd.append('token', token);
+        fd.append('sid', token);
         fd.append('content', raw);
         fd.append('action', isEdit ? 'edit' : 'add');
         if (isEdit) fd.append('id', editId);
@@ -512,10 +513,10 @@
 
     deleteBtn.addEventListener('click', async function () {
         if (!confirm('确定删除这篇文章吗？\n\n它只是被打上删除标记、不再对外显示，原文还留在 default.md 里，可以随时恢复。\n其它文章的编号不会变，已经分享出去的链接不受影响。')) return;
-        var token = sessionStorage.getItem('admin_token');
+        var token = sessionStorage.getItem(window.sfmbSessionKey || 'sfmb_sid');
         if (!token) { toast('授权已失效', 'err'); return; }
         var fd = new FormData();
-        fd.append('token', token);
+        fd.append('sid', token);
         fd.append('action', 'delete');
         fd.append('id', editId);
         try {
@@ -537,27 +538,46 @@
         location.href = 'console.html';
     });
 
+    $('btn-logout').addEventListener('click', async function () {
+        if (dirty && !confirm('还有未保存的修改，确定退出吗？')) return;
+        try { await apiCall({ action: 'logout' }); } catch (e) { }
+        try {
+            sessionStorage.removeItem(window.sfmbSessionKey || 'sfmb_sid');
+            sessionStorage.removeItem('sfmb_sid_exp');
+            localStorage.removeItem(DRAFT_KEY);
+        } catch (e) { }
+        dirty = false;
+        location.href = 'index.html';
+    });
+
     window.addEventListener('beforeunload', function (e) {
         if (dirty) { e.preventDefault(); e.returnValue = ''; }
     });
 
     /* ---------------- boot ---------------- */
     (async function boot() {
-        if (!sessionStorage.getItem('admin_token')) {
+        if (!sessionStorage.getItem(window.sfmbSessionKey || 'sfmb_sid')) {
             location.replace('login.html');
             return;
         }
 
         if (isEdit) {
-            var all = await getAllPosts();
-            var post = all.find(function (p) { return String(p.id) === String(editId); });
-            if (!post) { toast('找不到这篇文章', 'err'); return; }
-            document.title = '编辑 · ' + post.title;
-            titleEl.value = post.title;
-            dateEl.value = post.date;
-            tagEl.value = post.tags.join(', ');
-            input.value = post.body;
-            deleteBtn.hidden = false;
+            try {
+                var all = await getAdminPosts();
+                var post = all.find(function (p) { return String(p.id) === String(editId); });
+                if (!post) { toast('找不到这篇文章', 'err'); return; }
+                document.title = '编辑 · ' + post.title;
+                titleEl.value = post.title;
+                dateEl.value = post.date;
+                tagEl.value = post.tags.join(', ');
+                input.value = post.body;
+                deleteBtn.hidden = post.deleted;
+                if (post.deleted) toast('这篇已经在回收站里了，先恢复再编辑', 'err');
+            } catch (e) {
+                toast('加载失败：' + e.message + '，请重新登录', 'err');
+                setTimeout(function () { location.href = 'login.html'; }, 1500);
+                return;
+            }
         } else {
             dateEl.value = new Date().toISOString().slice(0, 10);
             document.title = '新建文章 · 控制台';

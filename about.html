@@ -195,7 +195,7 @@
         var box = document.getElementById('content');
         var src = document.getElementById('markdown-content');
         if (!box || !src) return;
-        box.innerHTML = (window.marked ? marked.parse(src.value) : src.value);
+        box.innerHTML = window.renderMarkdown ? renderMarkdown(src.value) : src.value;
         // 图片挂了也别留一个破图标在那
         box.querySelectorAll('img').forEach(function (img) {
             img.loading = 'lazy';

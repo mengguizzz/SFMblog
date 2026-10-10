@@ -73,8 +73,8 @@
 
         form.addEventListener('submit', async function (e) {
             e.preventDefault();
-            var token = input.value.trim();
-            if (!token) { say('请输入密钥。', 'error'); input.focus(); return; }
+            var password = input.value.trim();
+            if (!password) { say('请输入密钥。', 'error'); input.focus(); return; }
 
             btn.disabled = true;
             btn.textContent = '验证中…';
@@ -82,21 +82,28 @@
 
             try {
                 var fd = new FormData();
-                fd.append('action', 'verify');
-                fd.append('token', token);
+                fd.append('action', 'login');
+                fd.append('password', password);
                 var res = await fetch('./api.php', { method: 'POST', body: fd });
                 var data = await res.json().catch(function () { return {}; });
 
-                if (res.ok && data.success) {
-                    sessionStorage.setItem('admin_token', token);
+                if (res.ok && data.success && data.sid) {
+                    // 只把服务器发的会话 id 存进浏览器，密码本身不落盘
+                    sessionStorage.setItem('sfmb_sid', data.sid);
+                    if (data.expires) sessionStorage.setItem('sfmb_sid_exp', String(data.expires));
                     say('身份确认，正在跳转…', 'ok');
                     setTimeout(function () { window.location.href = 'console.html'; }, 500);
                     return;
                 }
 
-                say(data.error === 'Server not configured'
-                    ? '服务端还没配置密钥指纹（api.php 里的 $EXPECTED_HASH）。'
-                    : '密钥不正确，请重试。', 'error');
+                if (res.status === 429) {
+                    var mins = Math.ceil((data.retry_after || 0) / 60);
+                    say('失败次数过多，请 ' + mins + ' 分钟后再试。', 'error');
+                } else if (data.error === 'Server not configured') {
+                    say('服务端还没配置密钥指纹（config.php 里的 $EXPECTED_HASH）。', 'error');
+                } else {
+                    say('密钥不正确，请重试。', 'error');
+                }
             } catch (err) {
                 say('无法连接服务器，请检查 PHP 环境是否正常。', 'error');
             }
