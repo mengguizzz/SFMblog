@@ -32,7 +32,9 @@
     --ink-4: #8f96ab;
     --line: rgba(20, 22, 42, 0.13);
     --line-strong: rgba(20, 22, 42, 0.16);
-    --grid-strong: rgba(20, 22, 42, 0.22);
+    /* 纹理线单独一套（带紫调的彩色方格本），不动 --line */
+    --paper-line: rgba(124, 92, 220, 0.17);
+    --paper-line-strong: rgba(124, 92, 220, 0.32);
 
     /* glass */
     /* 透明玻璃：填充很淡、模糊很小，让背板"看得清"再靠边缘高光立住质感 */
@@ -107,7 +109,8 @@ html[data-theme="dark"] {
     --ink-4: #737a94;
     --line: rgba(255, 255, 255, 0.11);
     --line-strong: rgba(255, 255, 255, 0.16);
-    --grid-strong: rgba(255, 255, 255, 0.18);
+    --paper-line: rgba(150, 200, 255, 0.14);
+    --paper-line-strong: rgba(150, 200, 255, 0.26);
 
     --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.03));
     --glass-bg-2: rgba(255, 255, 255, 0.035);
@@ -143,12 +146,15 @@ html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     /*
-     * 显式给 html 一个背景。
-     * 原来只有 body 有背景，靠"body 背景传播到画布"这条规则；
-     * 移动端浏览器对这条规则的处理不一致，配合强制深色时就容易出现
-     * "浅色模式下背景发灰"的现象。写在 html 上就不依赖传播行为了。
+     * ⚠️ 这里千万不要给 html 设 background-color。
+     *
+     * 原来的机制是：html 没有背景 -> body 的背景**传播到画布**，
+     * 于是 .bg（z-index:-2，装着极光和纹理）能露出来。
+     * 一旦 html 有了背景，body 就不再传播、改为自己绘制那一层，
+     * 而 body 是不透明的 —— 它会直接盖在 .bg 和 .rain 上面，
+     * 整个背景装饰层全被遮住：浅色下看不到纹理，深色下只剩一片 #070810。
+     * （这个坑我踩过一次，黑色模式变纯黑就是它。）
      */
-    background-color: var(--bg-0);
 }
 
 body {
@@ -296,35 +302,48 @@ html[data-theme="dark"] .bg-aurora i { opacity: 0.42; }
 }
 
 /*
- * 四套纹理，改 <html data-pattern="..."> 就能换：
- *   iso      等距网格（默认，工程图纸感，直线被玻璃折射弯折最明显）
+ * 五套纹理，改 <html data-pattern="..."> 就能换。
+ * 全部由 CSS 渐变生成，没有任何栅格图 —— 换设备也不会有缩放问题。
+ *
+ *   grid     彩色方格本（默认）：22px 小格 + 每 4 格一条略深的主线
+ *   iso      等距网格，工程图纸感
  *   dots     点阵，最安静
- *   contour  等高线，曲线更有设计感
- *   none     不要纹理（玻璃会变成纯透明，折射没有参照物）
+ *   contour  等高线，曲线更好看
+ *   none     不要纹理（玻璃会变成纯透明，折射失去参照物）
  */
 
-/* ---- 纹理：点阵 ---- */
+/* ---- 彩色方格本（默认）---- */
+html[data-pattern="grid"] .bg-grid,
+html:not([data-pattern]) .bg-grid {
+    background-image:
+        linear-gradient(to right, var(--paper-line-strong) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--paper-line-strong) 1px, transparent 1px),
+        linear-gradient(to right, var(--paper-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--paper-line) 1px, transparent 1px);
+    background-size: 88px 88px, 88px 88px, 22px 22px, 22px 22px;
+}
+
+/* ---- 点阵 ---- */
 html[data-pattern="dots"] .bg-grid {
     background-image:
-        radial-gradient(circle, var(--grid-strong) 1.7px, transparent 1.8px),
-        radial-gradient(circle, var(--line) 1.1px, transparent 1.2px);
+        radial-gradient(circle, var(--paper-line-strong) 1.7px, transparent 1.8px),
+        radial-gradient(circle, var(--paper-line) 1.1px, transparent 1.2px);
     background-size: 104px 104px, 26px 26px;
 }
 
-/* ---- 纹理：等距网格（默认）---- */
-html[data-pattern="iso"] .bg-grid,
-html:not([data-pattern]) .bg-grid {
+/* ---- 等距网格 ---- */
+html[data-pattern="iso"] .bg-grid {
     background-image:
-        repeating-linear-gradient(60deg, var(--line) 0 1px, transparent 1px 34px),
-        repeating-linear-gradient(-60deg, var(--line) 0 1px, transparent 1px 34px),
-        repeating-linear-gradient(0deg, var(--grid-strong) 0 1px, transparent 1px 102px);
+        repeating-linear-gradient(60deg, var(--paper-line) 0 1px, transparent 1px 34px),
+        repeating-linear-gradient(-60deg, var(--paper-line) 0 1px, transparent 1px 34px),
+        repeating-linear-gradient(0deg, var(--paper-line-strong) 0 1px, transparent 1px 102px);
 }
 
-/* ---- 纹理：等高线 ---- */
+/* ---- 等高线 ---- */
 html[data-pattern="contour"] .bg-grid {
     background-image:
-        repeating-radial-gradient(circle at 16% 8%, var(--line) 0 1px, transparent 1px 46px),
-        repeating-radial-gradient(circle at 88% 78%, var(--grid-strong) 0 1px, transparent 1px 64px);
+        repeating-radial-gradient(circle at 16% 8%, var(--paper-line) 0 1px, transparent 1px 46px),
+        repeating-radial-gradient(circle at 88% 78%, var(--paper-line-strong) 0 1px, transparent 1px 64px);
 }
 
 /* ---- 不要纹理 ---- */
