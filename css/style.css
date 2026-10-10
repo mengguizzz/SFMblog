@@ -2181,6 +2181,87 @@ html.has-reveal [data-reveal].is-in {
     transform: none;
 }
 
+/* ------------------------------------------------- 13c. 文章评论（giscus） */
+
+/*
+ * 评论区是 giscus 的一个**跨域 iframe** —— 里面长什么样我们管不着，
+ * 能做主的只有外面这层容器：边距、宽度、以及"还没配好"时的提示。
+ * iframe 的高度由 giscus 自己 postMessage 出来、它自己设 style.height。
+ */
+#sfm-comments iframe.giscus-frame {
+    width: 100%;
+    border: 0;
+    /* 深色模式下 iframe 自己的白底会先露一帧，让容器顶着主题色 */
+    background: transparent;
+    color-scheme: light dark;
+}
+
+/* 还没在 GitHub 上配好时，显示这句人话，而不是一个空白框 */
+.comments-setup {
+    padding: 22px 24px;
+    border-radius: var(--r-md);
+    border: 1px dashed var(--line-strong);
+    background: var(--glass-bg-2);
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    line-height: 1.85;
+}
+
+.comments-setup b {
+    display: block;
+    color: var(--ink-1);
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+}
+
+.comments-setup p {
+    margin: 6px 0 0;
+}
+
+.comments-setup code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--brand-tint);
+    color: var(--brand-ink);
+    font-size: 0.88em;
+}
+
+.comments-setup .dim {
+    color: var(--ink-2);
+    opacity: 0.72;
+    font-size: 0.9rem;
+}
+
+/* 文章底下的评论区：小标题那一行 */
+.comments-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.comments-head h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.comments-tip {
+    margin: 10px 0 0;
+    color: var(--ink-2);
+    font-size: 0.92rem;
+    line-height: 1.8;
+}
+
+.comments-tip a {
+    color: var(--brand-ink);
+}
+
+/* 评论区是个 panel，内边距跟别的 panel 保持一致，只是标题下面留一点空 */
+#sfm-comments {
+    margin-top: 22px;
+}
+
 /* ------------------------------------------------- 14b. 终端雨 + 指针光 */
 
 /* 代码字形雨：铺在极光之上、内容之下，于是玻璃卡片会把它模糊掉 */

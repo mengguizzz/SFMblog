@@ -194,6 +194,7 @@
             m.setAttribute('content', theme === 'dark' ? '#070810' : '#fdf1f7');
         });
         if (persist) { try { localStorage.setItem('theme', theme); } catch (e) { } }
+        syncGiscusTheme();
     }
 
     function initTheme() {
@@ -1269,6 +1270,106 @@
         }, 2400);
     }
 
+    /* ------------------------------------------------------------- 留言（giscus） */
+    /*
+     * 留言存在 **GitHub 仓库的 Discussions** 里：
+     * 不占服务器、不用数据库，跟这个站"零数据库"的路子是同一套思路。
+     *
+     * 用的是 giscus（utterances 的升级版）：它比 utterances 多两件事 ——
+     *   1. 支持 postMessage 实时换主题，能跟着本站的白天/黑夜一起切；
+     *   2. 评论区支持 GitHub 的 reaction，还能按"最新/最热"排。
+     *
+     * ⚠️ 只有这三个值需要你自己填，见 README 的「留言板」一节：
+     *    1. 仓库 Settings 里把 Discussions 打开
+     *    2. 给仓库装上 giscus App（https://github.com/apps/giscus）
+     *    3. 去 https://giscus.app 选好仓库和分类，把它给的 `data-category-id` 抄到下面
+     *    （repo / repoId 我已经填好了）
+     *
+     * 想临时换成别的仓库（比如测试用），在页面里覆盖 window.SFM_GISCUS_CONFIG 即可。
+     */
+    var GISCUS = {
+        repo: 'mengguizzz/SFMblog',
+        repoId: 'R_kgDOT6x8kg',
+        category: 'Announcements',
+        categoryId: '',            // ← 填上 giscus.app 给的那串 DIC_xxx 就会自动启用
+    };
+
+    function giscusTheme() {
+        return currentTheme() === 'dark' ? 'dark' : 'light';
+    }
+
+    /** 主题切换时把新主题推给已经挂上去的评论区 */
+    function syncGiscusTheme() {
+        var t = giscusTheme();
+        $$('iframe.giscus-frame').forEach(function (f) {
+            try {
+                f.contentWindow.postMessage({ giscus: { setConfig: { theme: t } } }, 'https://giscus.app');
+            } catch (e) { }
+        });
+    }
+
+    /**
+     * 每篇文章对应哪个"讨论"。
+     *
+     * 用文章 id 当 term：本站的 id 就是原始块下标，**删掉前面的文章也不会变**，
+     * 所以在哪一篇下面聊，就永远挂在哪一篇上（用 URL 当 term 反而会因为改域名/参数而丢）。
+     */
+    function giscusTerm() {
+        var m = /[?&]id=(\d+)/.exec(location.search);
+        return m ? 'post-' + m[1] : '';
+    }
+
+    function initComments() {
+        var host = document.getElementById('sfm-comments');
+        if (!host) return;
+
+        var cfg = Object.assign({}, GISCUS, window.SFM_GISCUS_CONFIG || {});
+        // cfg.term 可以直接指定某条 Discussion（默认按文章算）
+        var term = cfg.term || giscusTerm();
+
+        // 没有文章 id（比如直接把 post.html 打开）就没必要摆一个评论区
+        if (!term) {
+            var sec = host.closest ? host.closest('section') : null;
+            if (sec) sec.hidden = true;
+            return;
+        }
+
+        // 还没配好：给一句人话，别留一个空白框
+        if (!cfg.repoId || !cfg.categoryId) {
+            host.innerHTML =
+                '<div class="comments-setup">' +
+                '<b>留言板还没接上</b>' +
+                '<p>留言是存在 GitHub 仓库的 Discussions 里的，需要在仓库里做三步：' +
+                '打开 Discussions → 装上 giscus App → 把 giscus.app 生成的 ' +
+                '<code>data-category-id</code> 填进 <code>js/blog.js</code>。</p>' +
+                '<p class="dim">详细步骤写在 README 的「留言板」一节。配好之后这里就是评论区，不用再改代码。</p>' +
+                '</div>';
+            return;
+        }
+
+        var s = document.createElement('script');
+        s.src = 'https://giscus.app/client.js';
+        s.async = true;
+        s.crossOrigin = 'anonymous';
+        var attrs = {
+            'data-repo': cfg.repo,
+            'data-repo-id': cfg.repoId,
+            'data-category': cfg.category,
+            'data-category-id': cfg.categoryId,
+            'data-mapping': 'specific',
+            'data-term': term,
+            'data-strict': '0',
+            'data-reactions-enabled': '1',
+            'data-emit-metadata': '0',
+            'data-input-position': 'top',   // 输入框放上面，长评论区里不用先滚到底
+            'data-theme': giscusTheme(),
+            'data-lang': 'zh-CN',
+            'data-loading': 'lazy',
+        };
+        Object.keys(attrs).forEach(function (k) { s.setAttribute(k, attrs[k]); });
+        host.appendChild(s);
+    }
+
     /** 彩蛋：在页面上敲 rain 开启加强版终端雨，再敲一次关掉 */
     function initEasterEgg() {
         var buf = '';
@@ -1300,6 +1401,7 @@
         initTypewriter();
         initEasterEgg();
         initLive2D();
+        initComments();
         initCounter();
         initDebugPanel();
 

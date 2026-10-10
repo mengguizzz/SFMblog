@@ -8,7 +8,7 @@
     <meta name="description" content="梦归の小站文章阅读页。">
     <meta name="theme-color" content="#fdf1f7">
     <link rel="icon" href="./src/webpic-head.png" type="image/png">
-    <link rel="stylesheet" href="./css/style.css?v=20261048a">
+    <link rel="stylesheet" href="./css/style.css?v=20261051a">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
     <script>
         (function () {
@@ -73,6 +73,19 @@
             </article>
 
             <nav class="post-nav" id="post-nav" aria-label="上下篇导航"></nav>
+
+            <section class="panel glass sheen" data-reveal style="--d:2" aria-labelledby="comments-title">
+                <div class="comments-head">
+                    <h2 id="comments-title">评论</h2>
+                    <span class="kicker">GitHub Discussions</span>
+                </div>
+                <p class="comments-tip">
+                    评论存在本站的 <a href="https://github.com/mengguizzz/SFMblog/discussions" target="_blank"
+                        rel="noopener">GitHub 仓库</a>里（Discussions），
+                    服务器上不放数据库 —— 用 GitHub 账号登录就能发言，想直接去 GitHub 上聊也行。
+                </p>
+                <div id="sfm-comments"></div>
+            </section>
         </div>
 
         <aside class="article-aside">
@@ -110,6 +123,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-<script src="./js/blog.js?v=20261048a"></script>
+<script src="./js/blog.js?v=20261051a"></script>
 </body>
 </html>

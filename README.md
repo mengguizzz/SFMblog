@@ -506,6 +506,67 @@ src/live2d/
 验证脚本 `work/qa/verify-hitokoto.js` 两种场景都覆盖了：
 正常联网（气泡换成真的句子）和把接口掐掉（气泡换成本地句子、**且不能有未捕获报错**）。
 
+### 文章评论（giscus）
+
+**只在文章页的底部**，首页 / 归档 / 关于都没有 —— 评论本来就该跟着文章走。
+
+用的是 [giscus](https://giscus.app/)：评论存进 **本仓库的 GitHub Discussions**，
+服务器上不放数据库 —— 和这个站"零数据库、备份就是复制文件夹"的思路是一路的。
+访客用 GitHub 账号登录即可发言，不想登录也可以直接去仓库里回。
+
+#### 三步配置（只做一次）
+
+`js/blog.js` 里的 `GISCUS` 已经把 `repo` / `repoId` 填好了，**只差 `categoryId`**：
+
+1. 仓库 **Settings → General → Features**，把 **Discussions** 勾上；
+2. 给仓库安装 giscus App：<https://github.com/apps/giscus>（只授权这一个仓库就行）；
+3. 打开 <https://giscus.app/>，填上仓库名，把生成结果里的 **`data-category-id`**
+   （形如 `DIC_kwDOT6x8ks4C...`）抄进 `js/blog.js` 的 `GISCUS.categoryId`。
+
+   ```js
+   var GISCUS = {
+       repo: 'mengguizzz/SFMblog',
+       repoId: 'R_kgDOT6x8kg',
+       category: 'Announcements',
+       categoryId: '',          // ← 填上就自动启用
+   };
+   ```
+
+没填之前不会摆一个空白框，而是显示一句"还没接上 + 该做什么"的提示；填好后刷新即可，不用改别的地方。
+
+#### 几个实现细节
+
+- **每篇文章各自一个讨论**：`data-term` 用的是**文章 id**（本站 id 就是原始块下标，
+  删掉前面的文章也不会变），这样改域名、改参数都不会把评论聊丢。
+  想手动把某个页面指到指定讨论，给 `window.SFM_GISCUS_CONFIG` 塞一个 `term` 就行。
+- **主题跟着站点走**：白天/黑夜切换时会用 giscus 官方的
+  `postMessage({giscus:{setConfig:{theme}}})` 推给它，不会出现"页面黑了评论区还是白的"。
+- **CSP 要放行三处**，少一个都不行：
+
+  | 指令 | 放行 | 为什么 |
+  | --- | --- | --- |
+  | `script-src` | `https://giscus.app` | 取 `client.js` |
+  | `style-src` | `https://giscus.app` | 它会插一张 `default.css` |
+  | `frame-src` | `https://giscus.app` | 评论区本体是 iframe |
+
+  > **`frame-src` 最容易漏**：原来根本没有这条指令，于是回落到 `default-src 'self'`，
+  > iframe 会被直接拦掉 —— 表现是界面上什么都不出来。
+
+  依然没有放开 `unsafe-eval`。
+
+#### 怎么验证
+
+`work/qa/verify-comments.js`（18 项）分三种情况测，关键是**能区分
+"我们的代码有问题"和"GitHub 那边还没配好"** —— 这两件事在浏览器里长得像：
+
+- 没填 `categoryId`：出提示、不去拉 giscus、零报错；
+- 填了之后（拿一套公开仓库的配置当测试）：`client.js` 能加载、iframe 能建起来、
+  `repo / repoId / categoryId / term / theme` 全都原样传到了 giscus、
+  iframe 里确实渲染出了 giscus 的界面、**零 CSP 违规**。
+  此时如果仓库那边没装 App，界面里会写 `giscus is not installed on this repository`
+  —— 那是仓库侧状态，脚本里单独放行这一条，其余报错照旧会失败。
+- 首页 / 归档 / 关于没有评论区；`post.html` 不带 `?id=` 时整块隐藏。
+
 ### ⚠️ 一个把整个背景弄丢的坑
 
 **千万不要给 `html` 设 `background-color`。**
