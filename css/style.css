@@ -2049,25 +2049,30 @@ html[data-pointer="on"] .glass:hover::after { opacity: 1; }
         animation: none;
         mix-blend-mode: normal;
     }
-    ::view-transition-old(root) { z-index: 1; }
-    ::view-transition-new(root) { z-index: 2; }
 
-    /* 只有我们主动加了这个类才播放 */
-    html.theme-wipe::view-transition-new(root) {
-        animation: theme-wipe 560ms var(--ease-out);
+    /* 白天 → 黑夜：新画面（深色）从按钮扩散出来盖满整屏 */
+    html.theme-wipe-in::view-transition-old(root) { z-index: 1; }
+    html.theme-wipe-in::view-transition-new(root) {
+        z-index: 2;
+        animation: circle-reveal 820ms cubic-bezier(0.16, 1, 0.3, 1);
     }
-    html.theme-wipe::view-transition-old(root) {
-        animation: theme-hold 560ms steps(1, end);
+
+    /* 黑夜 → 白天：反过来 —— 旧画面（深色）往按钮里缩回去，
+       露出底下已经切好的新画面，看着像整页被吸进按钮 */
+    html.theme-wipe-out::view-transition-new(root) { z-index: 1; }
+    html.theme-wipe-out::view-transition-old(root) {
+        z-index: 2;
+        animation: circle-collapse 760ms cubic-bezier(0.55, 0, 0.35, 1);
     }
 }
 
-@keyframes theme-wipe {
+@keyframes circle-reveal {
     from { clip-path: circle(0px at var(--wipe-x, 50%) var(--wipe-y, 0%)); }
     to { clip-path: circle(var(--wipe-r, 160vmax) at var(--wipe-x, 50%) var(--wipe-y, 0%)); }
 }
-@keyframes theme-hold {
-    from { opacity: 1; }
-    to { opacity: 1; }
+@keyframes circle-collapse {
+    from { clip-path: circle(var(--wipe-r, 160vmax) at var(--wipe-x, 50%) var(--wipe-y, 0%)); }
+    to { clip-path: circle(0px at var(--wipe-x, 50%) var(--wipe-y, 0%)); }
 }
 
 /* 悬浮时扫过卡片的一道细光 */

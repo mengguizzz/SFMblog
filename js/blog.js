@@ -205,7 +205,9 @@
 
     /**
      * 主题切换。
-     * 有 View Transitions 的浏览器：从按钮中心扩散一个圆，把新主题"擦"出来。
+     * 有 View Transitions 的浏览器：
+     *   白天 → 黑夜：新画面从按钮扩散铺满整屏；
+     *   黑夜 → 白天：旧画面往按钮里缩回去，像被吸进去，露出下面的新画面。
      * 没有的（或用户开了减少动态效果）：直接切，交给 CSS 的过渡去平滑。
      */
     function switchTheme(btn) {
@@ -231,11 +233,14 @@
         root.style.setProperty('--wipe-x', x.toFixed(1) + 'px');
         root.style.setProperty('--wipe-y', y.toFixed(1) + 'px');
         root.style.setProperty('--wipe-r', Math.ceil(radius) + 'px');
-        root.classList.add('theme-wipe');
+
+        // 去程扩散、回程收缩
+        var dirClass = next === 'dark' ? 'theme-wipe-in' : 'theme-wipe-out';
+        root.classList.add(dirClass);
 
         var transition = document.startViewTransition(function () { applyTheme(next, true); });
         transition.finished.finally(function () {
-            root.classList.remove('theme-wipe');
+            root.classList.remove('theme-wipe-in', 'theme-wipe-out');
             root.style.removeProperty('--wipe-x');
             root.style.removeProperty('--wipe-y');
             root.style.removeProperty('--wipe-r');
