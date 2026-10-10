@@ -283,7 +283,7 @@
     }
 
     /* ------------------------------------------------------- index: cards */
-    function postCard(post) {
+    function postCard(post, i) {
         var tags = post.tags.map(function (t) {
             return '<span class="tag">' + esc(t) + '</span>';
         }).join('');
@@ -292,7 +292,7 @@
             ? '<p class="post-card-summary">' + esc(post.summary) + '</p>'
             : '';
 
-        return '<article class="post-card glass sheen">' +
+        return '<article class="post-card glass sheen" data-reveal style="--d:' + (i || 0) + '">' +
             '<a class="post-card-link" href="post.html?id=' + post.id + '">' +
             '<div class="post-card-top"><span class="tag-row">' + tags + '</span>' +
             '<time class="post-date" datetime="' + esc(post.dateISO) + '">' + esc(post.date || '未标注日期') + '</time>' +
@@ -319,7 +319,7 @@
             return;
         }
 
-        box.innerHTML = posts.slice(0, 6).map(postCard).join('');
+        box.innerHTML = posts.slice(0, 6).map(function (p, i) { return postCard(p, i); }).join('');
 
         var statPosts = $('#stat-posts');
         if (statPosts) statPosts.textContent = posts.length;
@@ -357,10 +357,10 @@
             var yearCount = Object.keys(years).length;
             var topTag = Object.keys(tagSet).sort(function (a, b) { return tagSet[b] - tagSet[a]; })[0] || '—';
             statsBox.innerHTML =
-                '<div class="stat-card glass sheen"><strong>' + posts.length + '</strong><span>篇文章</span></div>' +
-                '<div class="stat-card glass sheen"><strong>' + yearCount + '</strong><span>个年份</span></div>' +
-                '<div class="stat-card glass sheen"><strong>' + Object.keys(tagSet).length + '</strong><span>个标签</span></div>' +
-                '<div class="stat-card glass sheen"><strong class="stat-word">' + esc(topTag) + '</strong><span>最常出现的标签</span></div>';
+                '<div class="stat-card glass sheen" data-reveal style="--d:0"><strong>' + posts.length + '</strong><span>篇文章</span></div>' +
+                '<div class="stat-card glass sheen" data-reveal style="--d:1"><strong>' + yearCount + '</strong><span>个年份</span></div>' +
+                '<div class="stat-card glass sheen" data-reveal style="--d:2"><strong>' + Object.keys(tagSet).length + '</strong><span>个标签</span></div>' +
+                '<div class="stat-card glass sheen" data-reveal style="--d:3"><strong class="stat-word">' + esc(topTag) + '</strong><span>最常出现的标签</span></div>';
         }
 
         // 按年份分组
@@ -373,19 +373,19 @@
         });
 
         box.innerHTML = groups.map(function (g) {
-            var items = g.items.map(function (p) {
+            var items = g.items.map(function (p, n) {
                 var tags = p.tags.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
                 var short = (p.dateISO || p.date).slice(5) || '--';
-                return '<a class="timeline-item" href="post.html?id=' + p.id + '">' +
+                return '<a class="timeline-item" data-reveal style="--d:' + Math.min(n, 6) + '" href="post.html?id=' + p.id + '">' +
                     '<span class="timeline-date">' + esc(short || '--') + '</span>' +
                     '<span class="timeline-title">' + esc(p.title) + '</span>' +
                     '<span class="tag-row">' + tags + '</span>' +
                     '</a>';
-            }).join('');
+            });
 
-            return '<section class="year-group">' +
+            return '<section class="year-group" data-reveal>' +
                 '<h2 class="year-label">' + esc(g.year) + '<em>' + g.items.length + ' 篇</em></h2>' +
-                items + '</section>';
+                items.join('') + '</section>';
         }).join('');
     }
 
@@ -612,14 +612,252 @@
     }
 
     /* ------------------------------------------------------------------ boot */
+    /* --------------------------------------------- 环境效果：浮现 / 雨 / 光 */
+
+    function prefersLess() {
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    /**
+     * 滚动浮现。
+     * "隐藏"的初始状态挂在 html.has-reveal 上，而这个类由 JS 添加 ——
+     * JS 挂了的话元素就是正常可见，不会整页空白。
+     */
+    function initReveal() {
+        var els = $$('[data-reveal]');
+        if (!els.length) return;
+
+        document.documentElement.classList.add('has-reveal');
+
+        if (prefersLess() || !('IntersectionObserver' in window)) {
+            els.forEach(function (el) { el.classList.add('is-in'); });
+            // 后面动态插入的元素也直接标记成已显示，别再挂观察器
+            window.sfmbObserveReveal = function () {
+                $$('[data-reveal]:not(.is-in)').forEach(function (el) { el.classList.add('is-in'); });
+            };
+            return;
+        }
+
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (en) {
+                if (!en.isIntersecting) return;
+                en.target.classList.add('is-in');
+                io.unobserve(en.target);
+            });
+        }, { rootMargin: '0px 0px -6% 0px', threshold: 0.05 });
+
+        els.forEach(function (el) { io.observe(el); });
+
+        // 动态插入的元素（文章卡、时间轴条目）渲染完再注册
+        window.sfmbObserveReveal = function () {
+            $$('[data-reveal]:not(.is-in)').forEach(function (el) { io.observe(el); });
+        };
+
+        // 兜底：万一观察器没触发，3 秒后全部显示
+        setTimeout(function () {
+            $$('[data-reveal]:not(.is-in)').forEach(function (el) { el.classList.add('is-in'); });
+        }, 3000);
+    }
+
+    /**
+     * 终端雨：把代码字形当成雨点铺在极光之上、内容之下，
+     * 这样玻璃卡片会把它模糊掉 —— 正好给"液态玻璃"提供要折射的东西。
+     * 帧率故意压到 18fps 当背景纹理用，标签页切走就停。
+     */
+    function initRain() {
+        if (prefersLess()) {
+            document.documentElement.dataset.rain = 'off';
+            return;
+        }
+
+        var canvas = document.createElement('canvas');
+        canvas.className = 'rain';
+        canvas.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(canvas);
+
+        var ctx = canvas.getContext('2d');
+        var GLYPHS = '01<>[]{}/\\$#*+=;:ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ';
+        var SIZE = 15;
+        var FRAME = 1000 / 18;
+        var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        var cols = 0, drops = [], speeds = [], last = 0;
+
+        function resize() {
+            var w = window.innerWidth, h = window.innerHeight;
+            canvas.width = Math.max(1, Math.floor(w * dpr));
+            canvas.height = Math.max(1, Math.floor(h * dpr));
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            cols = Math.ceil(w / SIZE);
+            drops = [];
+            speeds = [];
+            for (var i = 0; i < cols; i++) {
+                drops[i] = Math.random() * -(h / SIZE);
+                speeds[i] = 0.5 + Math.random() * 0.95;
+            }
+        }
+
+        function tint() {
+            return document.documentElement.dataset.theme === 'dark'
+                ? '150,226,255'   // 深色模式用冷色，像终端荧光
+                : '124,58,237';   // 浅色模式用紫色，压得住又不脏
+        }
+
+        function frame(now) {
+            requestAnimationFrame(frame);
+            if (document.hidden) { last = now; return; }
+            if (document.documentElement.dataset.rain === 'off') return;
+            if (now - last < FRAME) return;
+
+            var dt = Math.min(3, (now - last) / FRAME);
+            last = now;
+
+            var w = window.innerWidth, h = window.innerHeight;
+
+            // 用 destination-out 一点点擦掉上一帧，形成拖尾
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'rgba(0,0,0,0.16)';
+            ctx.fillRect(0, 0, w, h);
+            ctx.globalCompositeOperation = 'source-over';
+
+            ctx.font = SIZE + 'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = 'rgba(' + tint() + ',0.9)';
+
+            for (var i = 0; i < cols; i++) {
+                drops[i] += speeds[i] * dt;
+                var y = drops[i] * SIZE;
+                if (y > h) {
+                    drops[i] = Math.random() * -24;
+                    y = drops[i] * SIZE;
+                }
+                ctx.fillText(GLYPHS.charAt((Math.random() * GLYPHS.length) | 0), i * SIZE + 2, y);
+            }
+        }
+
+        resize();
+        window.addEventListener('resize', resize);
+        requestAnimationFrame(frame);
+
+        window.sfmbToggleRain = function () {
+            var cur = document.documentElement.dataset.rain || 'low';
+            var next = cur === 'high' ? 'off' : 'high';
+            document.documentElement.dataset.rain = next;
+            if (next !== 'off') { last = 0; }
+            return next;
+        };
+    }
+
+    /** 指针柔光 + 玻璃卡上的高光（只在真有鼠标的设备上启用） */
+    function initAmbientPointer() {
+        if (prefersLess()) return;
+        if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+        document.documentElement.dataset.pointer = 'on';
+
+        var spot = document.createElement('div');
+        spot.className = 'spotlight';
+        spot.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(spot);
+
+        var tx = window.innerWidth * 0.5, ty = window.innerHeight * 0.28;
+        var x = tx, y = ty;
+
+        window.addEventListener('pointermove', function (e) {
+            tx = e.clientX;
+            ty = e.clientY;
+
+            var card = e.target && e.target.closest ? e.target.closest('.glass') : null;
+            if (!card) return;
+            var r = card.getBoundingClientRect();
+            card.style.setProperty('--mx', (((e.clientX - r.left) / r.width) * 100).toFixed(1) + '%');
+            card.style.setProperty('--my', (((e.clientY - r.top) / r.height) * 100).toFixed(1) + '%');
+        }, { passive: true });
+
+        (function loop() {
+            requestAnimationFrame(loop);
+            if (document.hidden) return;
+            x += (tx - x) * 0.1;
+            y += (ty - y) * 0.1;
+            spot.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)';
+        })();
+    }
+
+    /** 把 [data-type] 里的文字一个字一个字打出来（光标用 CSS 画） */
+    function initTypewriter() {
+        var el = $('[data-type]');
+        if (!el || prefersLess()) return;
+
+        var full = el.getAttribute('data-type') || el.textContent || '';
+        var i = 0;
+        el.textContent = '';
+
+        (function step() {
+            i++;
+            el.textContent = full.slice(0, i);
+            if (i < full.length) {
+                setTimeout(step, 42 + Math.random() * 58);
+            } else {
+                el.classList.add('type-caret');
+            }
+        })();
+    }
+
+    /* 公共页面的小提示（控制台里那份是页面自带的） */
+    function toastMsg(text, kind) {
+        var stack = $('.toast-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.className = 'toast-stack';
+            document.body.appendChild(stack);
+        }
+        var el = document.createElement('div');
+        el.className = 'toast ' + (kind || '');
+        el.innerHTML = '<span class="bar"></span><span></span>';
+        el.lastChild.textContent = text;
+        stack.appendChild(el);
+        setTimeout(function () {
+            el.classList.add('is-out');
+            setTimeout(function () { el.remove(); }, 320);
+        }, 2400);
+    }
+
+    /** 彩蛋：在页面上敲 rain 开启加强版终端雨，再敲一次关掉 */
+    function initEasterEgg() {
+        var buf = '';
+        document.addEventListener('keydown', function (e) {
+            var tag = (e.target && e.target.tagName) || '';
+            if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || e.metaKey || e.ctrlKey || e.altKey) return;
+            if (!/^[a-z]$/.test(e.key)) { buf = ''; return; }
+
+            buf = (buf + e.key.toLowerCase()).slice(-10);
+            if (buf.slice(-4) !== 'rain' || !window.sfmbToggleRain) return;
+
+            var now = window.sfmbToggleRain();
+            toastMsg(now === 'high' ? '终端雨 · 加强' : '终端雨 · 关闭', now === 'high' ? 'ok' : '');
+            buf = '';
+        });
+    }
+
     function boot() {
         initTheme();
         initNav();
         initToTop();
+        initReveal();
+        initRain();
+        initAmbientPointer();
+        initTypewriter();
+        initEasterEgg();
         initCounter();
-        renderIndex();
-        renderArchive();
-        renderPost();
+
+        var afterRender = function () {
+            if (window.sfmbObserveReveal) window.sfmbObserveReveal();
+        };
+        renderIndex().then(afterRender);
+        renderArchive().then(afterRender);
+        renderPost().then(afterRender);
     }
 
     if (document.readyState === 'loading') {

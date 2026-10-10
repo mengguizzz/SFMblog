@@ -15,7 +15,9 @@
     --brand-1: #ec4899;
     --brand-2: #8b5cf6;
     --brand-3: #22d3ee;
-    --brand-ink: #db2777;
+    /* 比 --brand-1 深一档：浅色模式下作为正文里的链接/标签色，
+       要在浅底上稳稳过 WCAG AA（4.5:1），#db2777 只有 4.34 */
+    --brand-ink: #c81e6e;
     --grad-brand: linear-gradient(120deg, #ec4899 0%, #8b5cf6 100%);
     --grad-brand-r: linear-gradient(120deg, #8b5cf6 0%, #ec4899 100%);
     --brand-tint: rgba(236, 72, 153, 0.10);
@@ -704,21 +706,13 @@ html[data-theme="dark"] .theme-toggle .i-moon { display: none; }
         border-color 0.4s var(--ease);
 }
 .post-card::after {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3px;
-    background: var(--grad-brand);
-    transform: scaleX(0);
-    transform-origin: 0 50%;
-    transition: transform 0.45s var(--ease);
+    content: none;   /* 顶部渐变线见 .post-card-link::after；::after 留给指针高光 */
 }
 .post-card:hover {
     transform: translateY(-6px);
     box-shadow: var(--sh-lg);
     border-color: var(--brand-ring);
 }
-.post-card:hover::after { transform: scaleX(1); }
 
 .post-card-link {
     display: flex;
@@ -1927,12 +1921,148 @@ a:hover > .footer-img { transform: rotate(-4deg) scale(1.06); }
 }
 
 /* -------------------------------------------------------------- 14. Motion */
-.reveal {
+/*
+ * 滚动浮现。
+ * 注意：初始的"隐藏"状态挂在 html.has-reveal 上，而这个类是由 JS 加的 ——
+ * 万一 JS 挂了，元素就是普通可见状态，不会整页空白。
+ */
+html.has-reveal [data-reveal] {
     opacity: 0;
-    transform: translateY(16px);
-    animation: reveal 0.7s var(--ease-out) both;
+    transform: translateY(22px);
+    transition:
+        opacity 0.75s var(--ease-out),
+        transform 0.75s var(--ease-out);
+    transition-delay: calc(var(--d, 0) * 70ms);
+    will-change: opacity, transform;
 }
-@keyframes reveal { to { opacity: 1; transform: none; } }
+html.has-reveal [data-reveal].is-in {
+    opacity: 1;
+    transform: none;
+}
+
+/* ------------------------------------------------- 14b. 终端雨 + 指针光 */
+
+/* 代码字形雨：铺在极光之上、内容之下，于是玻璃卡片会把它模糊掉 */
+.rain {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    display: block;
+    pointer-events: none;
+    opacity: var(--rain-op, 0.20);
+    transition: opacity 1.4s var(--ease);
+}
+html[data-theme="dark"] .rain { opacity: 0.24; }
+html[data-rain="off"] .rain { opacity: 0; }
+html[data-rain="high"] .rain { opacity: 0.5; }
+html[data-theme="dark"][data-rain="high"] .rain { opacity: 0.62; }
+html[data-theme="dark"][data-rain="off"] .rain { opacity: 0; }
+
+/* 跟着指针走的柔光，让玻璃有"被照亮"的感觉 */
+.spotlight {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 620px;
+    height: 620px;
+    margin: -310px 0 0 -310px;
+    z-index: -1;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.6s var(--ease);
+    background: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.20), rgba(139, 92, 246, 0.13) 45%, transparent 68%);
+    filter: blur(26px);
+    will-change: transform;
+}
+html[data-pointer="on"] .spotlight { opacity: 1; }
+html[data-theme="dark"] .spotlight {
+    background: radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.22), rgba(56, 189, 248, 0.14) 45%, transparent 68%);
+}
+
+/* 玻璃卡上的指针高光（--mx/--my 由 JS 写入） */
+.glass { --mx: 50%; --my: 0%; }
+.glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s var(--ease);
+    background: radial-gradient(320px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.16), transparent 62%);
+}
+html[data-theme="dark"] .glass::after {
+    background: radial-gradient(320px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.10), transparent 62%);
+}
+html[data-pointer="on"] .glass:hover::after { opacity: 1; }
+
+/* 卡片顶部的渐变线：原来挂在 .post-card::after 上，会和上面的指针高光打架，
+   挪到内层链接上 */
+.post-card-link { position: relative; }
+.post-card::after { content: none; }
+.post-card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--grad-brand);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    transition: transform 0.45s var(--ease);
+}
+.post-card:hover .post-card-link::after { transform: scaleX(1); }
+
+/* 打字机光标 */
+.type-caret::after {
+    content: "▌";
+    margin-left: 2px;
+    color: var(--brand-ink);
+    animation: caret 1s steps(2, start) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+
+/* 主按钮外圈转光 */
+.btn-primary { position: relative; overflow: hidden; }
+.btn-primary::before {
+    content: "";
+    position: absolute;
+    inset: -40% -10%;
+    background: conic-gradient(from 0deg, transparent 0 62%, rgba(255, 255, 255, 0.55) 76%, transparent 86%);
+    animation: spin 4.5s linear infinite;
+    opacity: 0.5;
+    pointer-events: none;
+}
+.btn-primary > * { position: relative; }
+@keyframes spin { to { transform: rotate(1turn); } }
+
+/* 悬浮时扫过卡片的一道细光 */
+.post-card-link::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40%;
+    left: -60%;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+    transform: skewX(-14deg);
+    opacity: 0;
+}
+.post-card:hover .post-card-link::before {
+    animation: sweep 0.9s var(--ease-out);
+}
+@keyframes sweep {
+    from { left: -60%; opacity: 0.9; }
+    to { left: 130%; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.has-reveal [data-reveal] { opacity: 1; transform: none; }
+    .rain, .spotlight { display: none; }
+    .btn-primary::before { animation: none; opacity: 0.25; }
+    .post-card:hover .post-card-link::before { animation: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -1941,7 +2071,7 @@ a:hover > .footer-img { transform: rotate(-4deg) scale(1.06); }
         animation-iteration-count: 1 !important;
         transition-duration: 0.001ms !important;
     }
-    .reveal { opacity: 1; transform: none; }
+    html.has-reveal [data-reveal] { opacity: 1; transform: none; }
     .bg-aurora i { animation: none !important; }
 }
 

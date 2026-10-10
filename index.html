@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#fbf7fc" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#070810" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="./src/webpic-head.png" type="image/png">
-    <link rel="stylesheet" href="./css/style.css?v=20261010c">
+    <link rel="stylesheet" href="./css/style.css?v=20261011a">
     <script>
         /* 主题预置：避免刷新时闪白 */
         (function () {
@@ -60,7 +60,7 @@
 
     <!-- ================= Hero ================= -->
     <section class="hero">
-        <div class="hero-copy reveal">
+        <div class="hero-copy" data-reveal>
             <span class="kicker">Welcome</span>
             <h1 class="hero-title">梦归の小站<span class="grad">这里是 梦归。</span></h1>
             <p class="hero-lead">
@@ -81,12 +81,12 @@
             </div>
         </div>
 
-        <aside class="hero-side reveal" style="animation-delay:.12s">
+        <aside class="hero-side" data-reveal style="--d:2">
             <div class="profile-card glass sheen">
                 <div class="profile-avatar" style="background-image:url('./src/webpic-head.png')" role="img" aria-label="梦归的头像"></div>
                 <div>
                     <div class="profile-name">梦归</div>
-                    <div class="profile-role">&gt; root access granted</div>
+                    <div class="profile-role" data-type="> root access granted">&gt; root access granted</div>
                     <p class="profile-note">CS 在读学生 · 终身折腾家<br>探索代码的边界，热衷于在底层逻辑中寻找秩序。</p>
                 </div>
             </div>
@@ -109,7 +109,7 @@
 
     <!-- ================= Latest ================= -->
     <section class="section" id="latest">
-        <div class="section-head">
+        <div class="section-head" data-reveal>
             <div>
                 <span class="kicker">Latest</span>
                 <h2 class="section-title">最新文章</h2>
@@ -155,6 +155,6 @@
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
 </button>
 
-<script src="./js/blog.js?v=20261010c"></script>
+<script src="./js/blog.js?v=20261011a"></script>
 </body>
 </html>
