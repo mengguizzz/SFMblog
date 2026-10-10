@@ -191,7 +191,7 @@
     function applyTheme(theme, persist) {
         document.documentElement.dataset.theme = theme;
         $$('meta[name="theme-color"]').forEach(function (m) {
-            m.setAttribute('content', theme === 'dark' ? '#070810' : '#fbf7fc');
+            m.setAttribute('content', theme === 'dark' ? '#070810' : '#fdf1f7');
         });
         if (persist) { try { localStorage.setItem('theme', theme); } catch (e) { } }
     }

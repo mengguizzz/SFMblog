@@ -24,17 +24,29 @@
     --brand-ring: rgba(236, 72, 153, 0.30);
 
     /* page */
-    --bg-0: #fbf7fc;
-    --bg-1: #f2ecfb;
+    /*
+     * 白天底色从"近白"改成偏粉。
+     * 近白的底会把任何线条衬得很跳；底色和线色同属粉系之后，
+     * 格子就"长"在底上了，不再突兀。顺带整页也暖一点，不显得那么像张白纸。
+     */
+    --bg-0: #fdf1f7;
+    --bg-1: #f9e4f0;
+    /* 背景光晕的强度（浅色 / 深色分开，深色下太强会发灰） */
+    --bg-glow-a: 0.16;
+    --bg-glow-b: 0.12;
     --ink-1: #14162a;
     --ink-2: #43485e;
     --ink-3: #666d85;
     --ink-4: #8f96ab;
     --line: rgba(20, 22, 42, 0.13);
     --line-strong: rgba(20, 22, 42, 0.16);
-    /* 纹理线单独一套（带紫调的彩色方格本），不动 --line */
-    --paper-line: rgba(124, 92, 220, 0.17);
-    --paper-line-strong: rgba(124, 92, 220, 0.32);
+    /*
+     * 方格本的线，单独一套 token，不动界面的 --line。
+     * 浅色下用**靛蓝灰**而不是紫色：底色本身偏粉紫，再用同色系的紫
+     * 会显得跳、也容易发闷；方眼纸本来就该是冷灰蓝。
+     */
+    --paper-line: rgba(196, 112, 154, 0.13);
+    --paper-line-strong: rgba(196, 112, 154, 0.22);
 
     /* glass */
     /* 透明玻璃：填充很淡、模糊很小，让背板"看得清"再靠边缘高光立住质感 */
@@ -103,6 +115,8 @@ html[data-theme="dark"] {
 
     --bg-0: #070810;
     --bg-1: #0d1022;
+    --bg-glow-a: 0.10;
+    --bg-glow-b: 0.10;
     --ink-1: #eef0f9;
     --ink-2: #bfc5da;
     --ink-3: #9ba2ba;
@@ -235,8 +249,8 @@ ol { list-style: none; }
     overflow: hidden;
     pointer-events: none;
     background:
-        radial-gradient(1200px 700px at 12% -8%, rgba(236, 72, 153, 0.10), transparent 60%),
-        radial-gradient(1000px 600px at 92% 4%, rgba(139, 92, 246, 0.10), transparent 62%),
+        radial-gradient(1200px 700px at 12% -8%, rgba(236, 72, 153, var(--bg-glow-a)), transparent 60%),
+        radial-gradient(1000px 600px at 92% 4%, rgba(139, 92, 246, var(--bg-glow-b)), transparent 62%),
         linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 55%, var(--bg-0) 100%);
 }
 
@@ -320,7 +334,7 @@ html:not([data-pattern]) .bg-grid {
         linear-gradient(to bottom, var(--paper-line-strong) 1px, transparent 1px),
         linear-gradient(to right, var(--paper-line) 1px, transparent 1px),
         linear-gradient(to bottom, var(--paper-line) 1px, transparent 1px);
-    background-size: 88px 88px, 88px 88px, 22px 22px, 22px 22px;
+    background-size: 72px 72px, 72px 72px, 18px 18px, 18px 18px;
 }
 
 /* ---- 点阵 ---- */

@@ -6,16 +6,17 @@
     <meta name="color-scheme" content="light dark">
     <title>后台授权 · 梦归の小站</title>
     <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#fbf7fc" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#070810" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#fdf1f7">
     <link rel="icon" href="./src/webpic-head.png" type="image/png">
-    <link rel="stylesheet" href="./css/style.css?v=20261030a">
+    <link rel="stylesheet" href="./css/style.css?v=20261034a">
     <script>
         (function () {
             try {
                 var t = localStorage.getItem('theme');
                 if (t !== 'light' && t !== 'dark') {
-                    t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    // 没手动切过时按系统时间定：白天(7:00-19:00)浅色，其余深色
+                    var h = new Date().getHours();
+                    t = (h >= 7 && h < 19) ? 'light' : 'dark';
                 }
                 document.documentElement.dataset.theme = t;
             } catch (e) { }
