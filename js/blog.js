@@ -1338,11 +1338,11 @@
         if (!cfg.repoId || !cfg.categoryId) {
             host.innerHTML =
                 '<div class="comments-setup">' +
-                '<b>留言板还没接上</b>' +
-                '<p>留言是存在 GitHub 仓库的 Discussions 里的，需要在仓库里做三步：' +
+                '<b>评论还没接上</b>' +
+                '<p>评论是存在 GitHub 仓库的 Discussions 里的，需要在仓库里做三步：' +
                 '打开 Discussions → 装上 giscus App → 把 giscus.app 生成的 ' +
                 '<code>data-category-id</code> 填进 <code>js/blog.js</code>。</p>' +
-                '<p class="dim">详细步骤写在 README 的「留言板」一节。配好之后这里就是评论区，不用再改代码。</p>' +
+                '<p class="dim">详细步骤写在 README 的「文章评论」一节。配好之后这里就是评论区，不用再改代码。</p>' +
                 '</div>';
             return;
         }
