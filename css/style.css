@@ -2066,6 +2066,25 @@ html[data-pointer="on"] .glass:hover::after { opacity: 1; }
     }
 }
 
+/*
+ * 主题切换期间，把所有 CSS 过渡关掉。
+ *
+ * 原因：View Transitions 会在主题改完之后立刻截一张"新画面"。
+ * 如果此时元素还在做颜色/背景过渡，那一刻截到的还是旧颜色 ——
+ * 于是动画结束时真画面才补上来，看到的就是"闪一下"。
+ * 实测页面上有 35 个元素带着这类过渡（标签、导航、按钮、卡片…），
+ * 关掉之后新画面才是最终态。
+ *
+ * 注意：这里只关 transition，不碰 animation ——
+ * 圆形擦除走的是 ::view-transition-* 上的 animation，不受影响。
+ */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+    transition: none !important;
+}
+
 @keyframes circle-reveal {
     from { clip-path: circle(0px at var(--wipe-x, 50%) var(--wipe-y, 0%)); }
     to { clip-path: circle(var(--wipe-r, 160vmax) at var(--wipe-x, 50%) var(--wipe-y, 0%)); }

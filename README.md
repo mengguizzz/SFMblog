@@ -265,6 +265,10 @@ server {
 - 雨和光斑都是 `pointer-events: none`，不影响点击。
 - 主题扩散依赖浏览器的 View Transitions（Chrome/Edge、Safari 18+、Firefox 139+ 都支持）；
   不支持的浏览器会平滑地直接切换，不会出错。
+- **切换期间会把全站 CSS 过渡临时关掉**（`html.theme-switching`）：
+  View Transitions 是在主题改完后才截"新画面"的，此时若元素还在做颜色过渡，
+  截到的就是旧颜色，动画结束时真画面才补上 —— 看起来就是"闪一下"。
+  注意这里只关 `transition` 不碰 `animation`，否则会把圆形擦除一起干掉。
 
 ---
 *Talk is cheap. Show me the code.*

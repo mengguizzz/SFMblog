@@ -218,6 +218,8 @@
             applyTheme(next, true);
             return;
         }
+        if (switchTheme.busy) return;      // 连点两下时别叠一次切换
+        switchTheme.busy = true;
 
         var box = btn ? btn.getBoundingClientRect() : null;
         var x = box ? box.left + box.width / 2 : window.innerWidth - 44;
@@ -237,13 +239,18 @@
         // 去程扩散、回程收缩
         var dirClass = next === 'dark' ? 'theme-wipe-in' : 'theme-wipe-out';
         root.classList.add(dirClass);
+        // 关键：截"新画面"之前先把所有 CSS 过渡关掉，
+        // 否则截到的是过渡中的旧颜色，动画结束时真画面才补上 -> 闪一下
+        root.classList.add('theme-switching');
 
         var transition = document.startViewTransition(function () { applyTheme(next, true); });
         transition.finished.finally(function () {
             root.classList.remove('theme-wipe-in', 'theme-wipe-out');
+            root.classList.remove('theme-switching');
             root.style.removeProperty('--wipe-x');
             root.style.removeProperty('--wipe-y');
             root.style.removeProperty('--wipe-r');
+            switchTheme.busy = false;
         });
     }
 
