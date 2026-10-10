@@ -1055,6 +1055,9 @@
          *
          * 换成自己的模型：把模型放到 src/live2d/model/ 下，
          * 然后改 src/live2d/model_list.json 里的 models 数组。
+         *
+         * 现在仓库里有两个模型：0 = 伊蕾娜（MNDIA 制作），1 = 官方示例 Hiyori。
+         * 想默认用另一个，把 MODEL_ID 改一下就行；工具条上的"换模型"也能切。
          */
         var MODEL_CDN = './src/live2d/';
         var MODEL_ID = 0;
@@ -1112,8 +1115,8 @@
                 cubism5Path: PATH + 'live2dcubismcore.min.js',
                 cdnPath: MODEL_CDN,
                 modelId: MODEL_ID,
-                // 本地只有一个模型，切换和换装都没意义，只留"关于"和"关闭"
-                tools: ['info', 'quit'],
+                // 仓库里有两个模型，留个"换模型"；换装（贴图）没有额外素材，就不放了
+                tools: ['switch-model', 'info', 'quit'],
                 logLevel: 'warn',
                 drag: true,
             });

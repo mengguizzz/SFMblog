@@ -430,20 +430,32 @@ src/live2d/
 │       └── index2.js           Cubism 5 模型加载器
 ├── model_list.json             模型清单
 ├── CREDITS.md                  组件 / 模型的来源与授权说明
-└── model/Hiyori/               模型本体（约 1.8 MB）
+├── model/Elaina/               默认模型：《魔女之旅》伊蕾娜（MNDIA 配布，约 0.7 MB）
+│   ├── index.json              （即作者的 LSS.model3.json）
+│   ├── LSS.moc3 / LSS.physics3.json / LSS.cdi3.json
+│   ├── Elaina.1024/            贴图，4096×2048 压到 1024×512
+│   └── textures.cache          空数组占位（Cubism 2 模型才会请求，留着免得 404）
+└── model/Hiyori/               备选模型：Live2D 官方示例 Hiyori（约 1.8 MB）
     ├── index.json              （即官方的 Hiyori.model3.json）
     ├── Hiyori.moc3 / Hiyori.2048/ / motions/ / Hiyori.physics3.json …
     └── textures.cache          空数组占位（组件会请求，免得 404）
 ```
 
-合计约 2.4 MB，且**默认关闭**，所以不点按钮的访客一个字节都不会下载。
+合计约 3.1 MB（组件 0.6 MB + 两个模型），而且**默认关闭** ——
+不点那个 🐾 按钮的访客一个字节都不会下载。
 
-> **模型用的是 Live2D 官方示例模型 Hiyori**（来自 `Live2D/CubismWebSamples`），
+> **默认模型是《魔女之旅》伊蕾娜**，作者 **MNDIA**，配布页在
+> [模之屋](https://www.aplaybox.com/details/model/0MAXIOhAZAUw)。
+> 作者写明：**禁止商用**、允许二次配布、允许修改。本站是非商业个人博客，符合规则。
+> 角色本身版权归《魔女之旅》原作者与插画师。
+>
+> 备选是 **Live2D 官方示例模型 Hiyori**（来自 `Live2D/CubismWebSamples`），
 > 依据 [Live2D 免费素材利用许偌](https://www.live2d.com/eula/live2d-free-material-license-agreement_cn.html) 使用，
-> 版权归 Live2D Inc.。**关于页里也写了这段署名。**
+> 版权归 Live2D Inc.。两段署名都写在**关于页**和 `src/live2d/CREDITS.md` 里。
 >
 > 早先用的是 `fghrsh/live2d_api` 那种社区合集（里面有游戏角色提取物）。
-> 那类模型版权归各自原作者，**换个来源并不解决问题**，所以换成了官方素材。
+> 那类模型版权归各自原作者，**换个来源并不解决问题** —— 现在是作者本人公开配布、
+> 并且明确写清了使用规则的模型。
 
 **贴图做了压缩**：官方贴图是 2048×2048（两张共 4.3 MB），
 而这个看板娘的显示尺寸只有 300px，所以缩到 1024×1024，体积降到 1.1 MB，肉眼无差别。
