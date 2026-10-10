@@ -1078,8 +1078,8 @@
             window.initWidget({
                 waifuPath: PATH + 'waifu-tips.json',
                 cubism2Path: PATH + 'live2d.min.js',
-                // 只用 Cubism 2 模型就够了，省得再放行 cubism.live2d.com
-                cubism5Path: '',
+                // 官方示例模型 Hiyori 是 Cubism 5 格式（.moc3），核心也自托管了
+                cubism5Path: PATH + 'live2dcubismcore.min.js',
                 cdnPath: MODEL_CDN,
                 modelId: MODEL_ID,
                 // 本地只有一个模型，切换和换装都没意义，只留"关于"和"关闭"

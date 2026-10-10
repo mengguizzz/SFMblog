@@ -1152,6 +1152,21 @@ html[data-theme="dark"] .theme-toggle .i-moon { display: none; }
 }
 
 .contact-list { display: grid; gap: 4px; }
+
+/* 素材署名之类的小字 */
+.credit {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    color: var(--ink-3);
+}
+.credit strong { color: var(--ink-2); font-weight: 650; }
+.credit a {
+    color: var(--brand-ink);
+    border-bottom: 1px solid var(--brand-ring);
+    transition: color 0.2s, border-color 0.2s;
+}
+.credit a:hover { color: var(--brand-2); border-color: var(--brand-2); }
 .contact-link {
     display: flex;
     align-items: center;

@@ -421,45 +421,34 @@ please use @pixi/unsafe-eval module to enable support.
 
 ```text
 src/live2d/
-├── widget/                     组件本体（约 170 KB）
+├── widget/                     组件本体（约 630 KB）
 │   ├── waifu.css / waifu-tips.js / waifu-tips.json
-│   └── live2d.min.js           Cubism 2 核心
+│   ├── live2d.min.js           Cubism 2 加载器
+│   ├── live2dcubismcore.min.js Cubism 5 核心
+│   └── chunk/
+│       ├── index.js            Cubism 2 模型加载器
+│       └── index2.js           Cubism 5 模型加载器
 ├── model_list.json             模型清单
-└── model/Potion-Maker/Pio/     模型本体（约 0.9 MB）
-    ├── index.json
-    ├── model.moc / textures/ / motions/
+└── model/Hiyori/               模型本体（约 1.8 MB）
+    ├── index.json              （即官方的 Hiyori.model3.json）
+    ├── Hiyori.moc3 / Hiyori.2048/ / motions/ / Hiyori.physics3.json …
+    └── textures.cache          空数组占位（组件会请求，免得 404）
 ```
 
-合计约 1.1 MB，且**默认关闭**，所以不点按钮的访客一个字节都不会下载。
+合计约 2.4 MB，且**默认关闭**，所以不点按钮的访客一个字节都不会下载。
 
-> 模型取自 `fghrsh/live2d_api`（社区整理的合集），**版权归原作者，仅供学习交流**。
-> 自托管只是省掉了第三方 CDN，并不改变授权性质。
+> **模型用的是 Live2D 官方示例模型 Hiyori**（来自 `Live2D/CubismWebSamples`），
+> 依据 [Live2D 免费素材利用许偌](https://www.live2d.com/eula/live2d-free-material-license-agreement_cn.html) 使用，
+> 版权归 Live2D Inc.。**关于页里也写了这段署名。**
+>
+> 早先用的是 `fghrsh/live2d_api` 那种社区合集（里面有游戏角色提取物）。
+> 那类模型版权归各自原作者，**换个来源并不解决问题**，所以换成了官方素材。
 
-#### 怎么换模型
-
-打开 `js/blog.js`，找到 `initLive2D()` 里这两个值：
-
-```js
-var MODEL_CDN = 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/';
-var MODEL_ID  = 0;
-```
-
-`MODEL_ID` 就是模型编号。默认仓库里可选：
-
-| MODEL_ID | 模型 |
-| --- | --- |
-| **0** | Potion-Maker/Pio（默认） |
-| 1 | Potion-Maker/Tia |
-| 2 | bilibili-live/22 |
-| 3 | bilibili-live/33 |
-| 4 | ShizukuTalk（48 + 睡衣两套，可用换装按钮切） |
-| 5 | 海王星涅普顿（多套衣服） |
-| 6 | KantaiCollection/murakumo |
-
-想看最新列表，直接访问 `MODEL_CDN + 'model_list.json'`。
+**贴图做了压缩**：官方贴图是 2048×2048（两张共 4.3 MB），
+而这个看板娘的显示尺寸只有 300px，所以缩到 1024×1024，体积降到 1.1 MB，肉眼无差别。
 
 **想换成自己的模型**：把模型目录放到 `src/live2d/model/<你的模型名>/`
-（里面要有 `index.json`、`.moc`、`textures/`、`motions/`），
+（里面要有 `index.json`，以及它引用的 `.moc` / `.moc3`、贴图、动作等），
 然后改 `src/live2d/model_list.json`：
 
 ```json
@@ -469,10 +458,10 @@ var MODEL_ID  = 0;
 }
 ```
 
-> ⚠️ 当前只加载了 **Cubism 2**（`.moc`）。如果你用新版 Cubism Editor 做模型，
-> 导出的是 **`.moc3`**，需要把 `initLive2D()` 里的 `cubism5Path` 指回
-> `https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js`，
-> 并在 nginx 的 CSP 里放行 `https://cubism.live2d.com`。
+> 组件靠 `index.json` 里的 `Version === 3 || FileReferences` 判断模型版本：
+> 有这两个字段走 **Cubism 5**（`.moc3`），否则走 **Cubism 2**（`.moc`）。
+> **两套核心都已经自托管**，所以两种格式都能直接用 —— 不需要改 CSP，
+> 也不需要联网取官方 SDK。
 
 ### ⚠️ 一个把整个背景弄丢的坑
 
