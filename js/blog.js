@@ -968,8 +968,9 @@
     function initDebugPanel() {
         if (!/[?&]debug/.test(location.search)) return;
 
-        var cs = getComputedStyle(document.documentElement);
-        var rows = [
+        function collect() {
+            var cs = getComputedStyle(document.documentElement);
+            return [
             ['主题 (data-theme)', document.documentElement.dataset.theme],
             ['系统深色偏好', window.matchMedia('(prefers-color-scheme: dark)').matches ? '深色' : '浅色'],
             ['color-scheme', cs.colorScheme],
@@ -978,18 +979,36 @@
             ['body 背景', getComputedStyle(document.body).backgroundColor],
             ['--ink-1', cs.getPropertyValue('--ink-1').trim()],
             ['视口 / DPR', window.innerWidth + '×' + window.innerHeight + '  @' + window.devicePixelRatio + 'x'],
+            ['-- 看板娘 --', ''],
+            ['鼠标环境合格', window.matchMedia('(hover: hover) and (pointer: fine)').matches ? '是' : '否'],
+            ['视口足够宽(≥1024)', window.innerWidth >= 1024 ? '是' : '否'],
+            ['减少动态效果', window.matchMedia('(prefers-reduced-motion: reduce)').matches ? '是' : '否'],
+            ['存储里的开关', (function () { try { return localStorage.getItem('sfmb_pet') || '(未设置 → 默认关闭)'; } catch (e) { return '读取失败'; } })()],
+            ['组件脚本是否加载', window.initWidget ? '已加载' : '未加载'],
+            ['看板娘容器', document.getElementById('waifu') ? '存在' : '不存在'],
+            ['模型 canvas', (function () {
+                var c = document.querySelector('#waifu canvas');
+                return c ? c.width + '×' + c.height : '不存在';
+            })()],
+            ['唤出按钮', document.getElementById('sfm-pet-btn') ? '存在' : '不存在'],
             ['UA', navigator.userAgent.slice(0, 110)],
-        ];
+            ];
+        }
 
         var box = document.createElement('div');
         box.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:9999;max-width:min(94vw,540px);' +
             'padding:14px 16px;border-radius:14px;background:rgba(10,12,26,.92);color:#e8ecff;' +
             'font:12px/1.7 ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;' +
             'box-shadow:0 12px 40px rgba(0,0,0,.45)';
-        box.innerHTML = '<b style="color:#f472b6">· 诊断信息（?debug）·</b>\n\n' +
-            rows.map(function (r) {
-                return '<span style="color:#8b93b5">' + r[0] + '：</span>' + esc(r[1]);
-            }).join('\n');
+
+        function render() {
+            box.innerHTML = '<b style="color:#f472b6">· 诊断信息（?debug，每秒刷新）·</b>\n\n' +
+                collect().map(function (r) {
+                    return '<span style="color:#8b93b5">' + r[0] + '：</span>' + esc(r[1]);
+                }).join('\n');
+        }
+        render();
+        setInterval(render, 1000);
 
         var close = document.createElement('button');
         close.textContent = '关闭';
@@ -1056,9 +1075,20 @@
             b.innerHTML = '<span aria-hidden="true">🐾</span>';
             b.addEventListener('click', function () {
                 try { localStorage.setItem(PET_KEY, 'on'); } catch (e) { }
-                hideBtn();
                 var toggle = document.getElementById('waifu-toggle');
-                if (toggle) { toggle.click(); } else { mount(); }
+                if (toggle) {
+                    toggle.click();                 // 让组件自己滑回来
+                    // 只有确认它真的出来了，才收掉这个按钮；
+                    // 否则会出现"按钮没了、看板娘也没出来"的死局
+                    setTimeout(function () {
+                        var w = document.getElementById('waifu');
+                        var visible = w && getComputedStyle(w).display !== 'none';
+                        if (visible) { hideBtn(); } else { mount(); }
+                    }, 900);
+                } else {
+                    mount();
+                    hideBtn();
+                }
             });
             document.body.appendChild(b);
             return b;
