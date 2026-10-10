@@ -194,7 +194,6 @@
             m.setAttribute('content', theme === 'dark' ? '#070810' : '#fdf1f7');
         });
         if (persist) { try { localStorage.setItem('theme', theme); } catch (e) { } }
-        syncGiscusTheme();
     }
 
     function initTheme() {
@@ -1270,104 +1269,276 @@
         }, 2400);
     }
 
-    /* ------------------------------------------------------------- 留言（giscus） */
+    /* ------------------------------------------------------------------ 评论 */
     /*
-     * 留言存在 **GitHub 仓库的 Discussions** 里：
-     * 不占服务器、不用数据库，跟这个站"零数据库"的路子是同一套思路。
+     * 自己做的评论：**存在服务器的 comments/<文章 id>.json 里**。
      *
-     * 用的是 giscus（utterances 的升级版）：它比 utterances 多两件事 ——
-     *   1. 支持 postMessage 实时换主题，能跟着本站的白天/黑夜一起切；
-     *   2. 评论区支持 GitHub 的 reaction，还能按"最新/最热"排。
+     * 为什么不用 giscus / utterances / Disqus：
+     *   1. 那几套都要"一个外站"——要么公开一个 GitHub 仓库并给它装 App，
+     *      要么把评论托管在别人的服务上。这个站是放在自己服务器上的，
+     *      没理由为了评论再挂一个外部依赖（还会多出第三方请求）。
+     *   2. 数据是自己的：一个 JSON 文件，跟 blogs/default.md 一样能直接看、直接备份。
      *
-     * ⚠️ 只有这三个值需要你自己填，见 README 的「留言板」一节：
-     *    1. 仓库 Settings 里把 Discussions 打开
-     *    2. 给仓库装上 giscus App（https://github.com/apps/giscus）
-     *    3. 去 https://giscus.app 选好仓库和分类，把它给的 `data-category-id` 抄到下面
-     *    （repo / repoId 我已经填好了）
-     *
-     * 想临时换成别的仓库（比如测试用），在页面里覆盖 window.SFM_GISCUS_CONFIG 即可。
+     * 安全性：**用户输入一律走 textContent，绝不拼 innerHTML**。
+     * 这是最省心的做法 —— 不用去维护一份"过滤黑名单"，也不会漏。
      */
-    var GISCUS = {
-        repo: 'mengguizzz/SFMblog',
-        repoId: 'R_kgDOT6x8kg',
-        category: 'Announcements',
-        categoryId: '',            // ← 填上 giscus.app 给的那串 DIC_xxx 就会自动启用
-    };
 
-    function giscusTheme() {
-        return currentTheme() === 'dark' ? 'dark' : 'light';
-    }
+    var COMMENT_MAX = 3000;
+    var cmt = { post: null, items: [], parent: null, busy: false, loaded: false };
 
-    /** 主题切换时把新主题推给已经挂上去的评论区 */
-    function syncGiscusTheme() {
-        var t = giscusTheme();
-        $$('iframe.giscus-frame').forEach(function (f) {
-            try {
-                f.contentWindow.postMessage({ giscus: { setConfig: { theme: t } } }, 'https://giscus.app');
-            } catch (e) { }
-        });
-    }
-
-    /**
-     * 每篇文章对应哪个"讨论"。
-     *
-     * 用文章 id 当 term：本站的 id 就是原始块下标，**删掉前面的文章也不会变**，
-     * 所以在哪一篇下面聊，就永远挂在哪一篇上（用 URL 当 term 反而会因为改域名/参数而丢）。
-     */
-    function giscusTerm() {
+    function postIdFromUrl() {
         var m = /[?&]id=(\d+)/.exec(location.search);
-        return m ? 'post-' + m[1] : '';
+        return m ? parseInt(m[1], 10) : null;
+    }
+
+    /** 头像：只用昵称算出来，不请求任何外部服务（Gravatar 那种会多一个第三方请求） */
+    function avatarFor(name) {
+        var chars = Array.from(String(name || '游'));
+        var hue = 0;
+        for (var i = 0; i < String(name).length; i++) {
+            hue = (hue * 31 + String(name).charCodeAt(i)) % 360;
+        }
+        var el = document.createElement('span');
+        el.className = 'cmt-av';
+        el.textContent = chars[0];
+        el.setAttribute('aria-hidden', 'true');
+        el.style.background =
+            'linear-gradient(135deg, hsl(' + hue + ' 78% 66%), hsl(' + ((hue + 46) % 360) + ' 70% 46%))';
+        return el;
+    }
+
+    function relTime(ts) {
+        var d = Math.floor(Date.now() / 1000) - ts;
+        if (d < 60) return '刚刚';
+        if (d < 3600) return Math.floor(d / 60) + ' 分钟前';
+        if (d < 86400) return Math.floor(d / 3600) + ' 小时前';
+        if (d < 86400 * 30) return Math.floor(d / 86400) + ' 天前';
+        var t = new Date(ts * 1000);
+        return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' +
+            String(t.getDate()).padStart(2, '0');
+    }
+
+    /** 一条评论的 DOM（全部用 createElement + textContent，不拼 HTML） */
+    function commentNode(c, replies) {
+        var li = document.createElement('li');
+        li.className = 'cmt-item';
+        li.appendChild(avatarFor(c.name));
+
+        var body = document.createElement('div');
+        body.className = 'cmt-body';
+
+        var head = document.createElement('div');
+        head.className = 'cmt-meta';
+
+        var who = document.createElement('span');
+        who.className = 'cmt-name';
+        if (c.site && /^https?:\/\//i.test(c.site)) {
+            var a = document.createElement('a');
+            a.href = c.site;
+            a.target = '_blank';
+            a.rel = 'nofollow noopener noreferrer ugc';
+            a.textContent = c.name;
+            who.appendChild(a);
+        } else {
+            who.textContent = c.name;
+        }
+        head.appendChild(who);
+
+        var when = document.createElement('span');
+        when.className = 'cmt-time';
+        when.textContent = relTime(c.ts);
+        when.title = new Date(c.ts * 1000).toLocaleString('zh-CN');
+        head.appendChild(when);
+
+        var replyBtn = document.createElement('button');
+        replyBtn.type = 'button';
+        replyBtn.className = 'cmt-reply-btn';
+        replyBtn.textContent = '回复';
+        replyBtn.addEventListener('click', function () { startReply(c.id, c.name); });
+        head.appendChild(replyBtn);
+        body.appendChild(head);
+
+        var text = document.createElement('div');
+        text.className = 'cmt-text';
+        text.textContent = c.text;          // ← 关键：当文本，不当 HTML
+        body.appendChild(text);
+        li.appendChild(body);
+
+        if (replies && replies.length) {
+            var ul = document.createElement('ul');
+            ul.className = 'cmt-children';
+            replies.forEach(function (r) { ul.appendChild(commentNode(r, null)); });
+            li.appendChild(ul);
+        }
+        return li;
+    }
+
+    function renderComments() {
+        var list = $('#cmt-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        var approved = {};
+        cmt.items.forEach(function (c) { approved[c.id] = true; });
+
+        var kids = {};
+        var roots = [];
+        cmt.items.forEach(function (c) {
+            // 父评论不在（比如还没过审）时，这条就当成顶层显示，别让它凭空消失
+            if (c.parent && approved[c.parent]) {
+                (kids[c.parent] = kids[c.parent] || []).push(c);
+            } else {
+                roots.push(c);
+            }
+        });
+
+        if (!roots.length) {
+            var empty = document.createElement('li');
+            empty.className = 'cmt-empty';
+            empty.textContent = '还没有评论，来当第一个吧。';
+            list.appendChild(empty);
+        } else {
+            roots.forEach(function (c) { list.appendChild(commentNode(c, kids[c.id] || [])); });
+        }
+
+        var count = $('#cmt-count');
+        if (count) {
+            count.textContent = cmt.items.length ? cmt.items.length + ' 条评论' : '还没有评论';
+        }
+    }
+
+    function commentHint(msg, kind) {
+        var h = $('#cmt-hint');
+        if (!h) return;
+        h.textContent = msg || '';
+        h.className = 'cmt-hint' + (kind ? ' is-' + kind : '');
+    }
+
+    function startReply(id, name) {
+        cmt.parent = id;
+        var bar = $('#cmt-reply-to');
+        if (bar) {
+            bar.hidden = false;
+            bar.querySelector('b').textContent = name;
+        }
+        var ta = $('#cmt-text');
+        if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center', behavior: prefersLess() ? 'auto' : 'smooth' }); }
+    }
+
+    function cancelReply() {
+        cmt.parent = null;
+        var bar = $('#cmt-reply-to');
+        if (bar) bar.hidden = true;
+    }
+
+    async function loadComments() {
+        var res = await fetch(API + '?action=comments&id=' + encodeURIComponent(cmt.post), { cache: 'no-store' });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) throw new Error(data.error || ('HTTP ' + res.status));
+        cmt.items = data.items || [];
+        cmt.loaded = true;
+        renderComments();
     }
 
     function initComments() {
         var host = document.getElementById('sfm-comments');
         if (!host) return;
 
-        var cfg = Object.assign({}, GISCUS, window.SFM_GISCUS_CONFIG || {});
-        // cfg.term 可以直接指定某条 Discussion（默认按文章算）
-        var term = cfg.term || giscusTerm();
-
-        // 没有文章 id（比如直接把 post.html 打开）就没必要摆一个评论区
-        if (!term) {
+        cmt.post = postIdFromUrl();
+        // 没有文章 id（比如直接把 post.html 打开）就不摆评论区了
+        if (cmt.post === null) {
             var sec = host.closest ? host.closest('section') : null;
             if (sec) sec.hidden = true;
             return;
         }
 
-        // 还没配好：给一句人话，别留一个空白框
-        if (!cfg.repoId || !cfg.categoryId) {
-            host.innerHTML =
-                '<div class="comments-setup">' +
-                '<b>评论还没接上</b>' +
-                '<p>评论是存在 GitHub 仓库的 Discussions 里的，需要在仓库里做三步：' +
-                '打开 Discussions → 装上 giscus App → 把 giscus.app 生成的 ' +
-                '<code>data-category-id</code> 填进 <code>js/blog.js</code>。</p>' +
-                '<p class="dim">详细步骤写在 README 的「文章评论」一节。配好之后这里就是评论区，不用再改代码。</p>' +
-                '</div>';
+        /*
+         * 骨架。这一段是**写死的模板**、不含任何用户数据，所以可以放心用 innerHTML；
+         * 后面渲染评论时，用户的内容一律走 textContent。
+         */
+        host.innerHTML =
+            '<form class="cmt-form" id="cmt-form" novalidate>' +
+            '<div class="cmt-reply-to" id="cmt-reply-to" hidden>正在回复 <b></b>' +
+            '<button type="button" id="cmt-cancel-reply">取消</button></div>' +
+            '<div class="cmt-row">' +
+            '<input class="cmt-input" id="cmt-name" type="text" maxlength="40" placeholder="昵称（可留空）" autocomplete="nickname">' +
+            '<input class="cmt-input" id="cmt-site" type="url" maxlength="200" placeholder="网站（可选）" autocomplete="url">' +
+            '</div>' +
+            '<textarea class="cmt-input cmt-textarea" id="cmt-text" maxlength="3000" rows="4" ' +
+            'placeholder="说点什么…（支持换行；不会解析 HTML，写标签只会原样显示）"></textarea>' +
+            /* 蜜罐：放在屏幕外，真人看不见也不会填；填了的按机器人处理 */
+            '<div class="cmt-hp"><label>别填这里<input id="cmt-hp" type="text" tabindex="-1" autocomplete="off"></label></div>' +
+            '<div class="cmt-actions">' +
+            '<span class="cmt-hint" id="cmt-hint"></span>' +
+            '<button class="cmt-submit" id="cmt-submit" type="submit">发表评论</button>' +
+            '</div>' +
+            '</form>' +
+            '<div class="cmt-head"><span id="cmt-count">…</span></div>' +
+            '<ol class="cmt-list" id="cmt-list"></ol>';
+
+        $('#cmt-form').addEventListener('submit', submitComment);
+        $('#cmt-cancel-reply').addEventListener('click', function () {
+            cancelReply();
+            commentHint('');
+        });
+
+        loadComments().catch(function (err) {
+            var list = $('#cmt-list');
+            if (list) list.innerHTML = '';
+            commentHint('评论加载失败：' + err.message, 'err');
+        });
+    }
+
+    /** 发表评论（也用来发表回复） */
+    async function submitComment(e) {
+        e.preventDefault();
+        if (cmt.busy) return;
+
+        var text = $('#cmt-text').value.trim();
+        if (!text) {
+            commentHint('内容不能是空的。', 'err');
+            return;
+        }
+        if (Array.from(text).length > COMMENT_MAX) {
+            commentHint('内容太长了（最多 ' + COMMENT_MAX + ' 个字）。', 'err');
             return;
         }
 
-        var s = document.createElement('script');
-        s.src = 'https://giscus.app/client.js';
-        s.async = true;
-        s.crossOrigin = 'anonymous';
-        var attrs = {
-            'data-repo': cfg.repo,
-            'data-repo-id': cfg.repoId,
-            'data-category': cfg.category,
-            'data-category-id': cfg.categoryId,
-            'data-mapping': 'specific',
-            'data-term': term,
-            'data-strict': '0',
-            'data-reactions-enabled': '1',
-            'data-emit-metadata': '0',
-            'data-input-position': 'top',   // 输入框放上面，长评论区里不用先滚到底
-            'data-theme': giscusTheme(),
-            'data-lang': 'zh-CN',
-            'data-loading': 'lazy',
-        };
-        Object.keys(attrs).forEach(function (k) { s.setAttribute(k, attrs[k]); });
-        host.appendChild(s);
+        var btn = $('#cmt-submit');
+        cmt.busy = true;
+        if (btn) { btn.disabled = true; btn.textContent = '发送中…'; }
+        commentHint('');
+
+        var fd = new FormData();
+        fd.append('action', 'comment');
+        fd.append('id', cmt.post);
+        fd.append('name', $('#cmt-name').value);
+        fd.append('site', $('#cmt-site').value);
+        fd.append('text', text);
+        fd.append('parent', cmt.parent || '');
+        fd.append('hp', $('#cmt-hp').value);
+        // 从打开页面到点提交过了多久 —— 服务端拿它挡"秒发"的脚本（不用客户端时钟，避免时区/时间不对）
+        fd.append('elapsed', String(Math.round(performance.now())));
+
+        try {
+            var res = await fetch(API, { method: 'POST', body: fd });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok || !data.success) throw new Error(data.error || ('HTTP ' + res.status));
+
+            $('#cmt-text').value = '';
+            cancelReply();
+            if (data.pending) {
+                commentHint('提交好了，等站长点个通过就会显示出来 ✨', 'ok');
+            } else {
+                commentHint('发表成功 ✨', 'ok');
+            }
+            await loadComments();
+        } catch (err) {
+            commentHint(err.message, 'err');
+        } finally {
+            cmt.busy = false;
+            if (btn) { btn.disabled = false; btn.textContent = '发表评论'; }
+        }
     }
 
     /** 彩蛋：在页面上敲 rain 开启加强版终端雨，再敲一次关掉 */

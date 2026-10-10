@@ -1967,6 +1967,75 @@ html[data-theme="dark"] .theme-toggle .i-moon { display: none; }
 .drawer-item .dt { font-family: var(--mono); font-size: 0.7rem; color: rgba(255, 255, 255, 0.48); flex: none; }
 .drawer-item.is-current { background: var(--brand-tint); color: #fff; }
 
+/* ---------------------------------------------- 控制台 · 评论管理（抽屉里） */
+
+.drawer-cmt {
+    margin-bottom: 8px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.86rem;
+    line-height: 1.75;
+}
+
+.drawer-cmt.is-pending {
+    border-color: var(--brand-ring);
+    background: var(--brand-tint);
+}
+
+.drawer-cmt .dc-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.drawer-cmt .dc-head b { color: #fff; }
+
+.drawer-cmt .dc-badge {
+    padding: 1px 8px;
+    border-radius: var(--r-pill);
+    background: var(--brand-1);
+    color: #fff;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+}
+
+.drawer-cmt.is-spam .dc-badge { background: #ef4444; }
+
+.drawer-cmt .dc-meta {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.74rem;
+}
+
+.drawer-cmt .dc-text {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.72);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.drawer-cmt .dc-acts {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.drawer-cmt .dc-acts button {
+    padding: 4px 12px;
+    border-radius: var(--r-pill);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.76rem;
+    transition: background-color 0.2s;
+}
+
+.drawer-cmt .dc-acts button:hover { background: rgba(255, 255, 255, 0.1); }
+.drawer-cmt .dc-acts .ok { border-color: #10b981; color: #10b981; }
+.drawer-cmt .dc-acts .del { border-color: rgba(239, 68, 68, 0.7); color: #ef4444; }
+
 .scrim {
     position: fixed;
     inset: 0;
@@ -2181,58 +2250,14 @@ html.has-reveal [data-reveal].is-in {
     transform: none;
 }
 
-/* ------------------------------------------------- 13c. 文章评论（giscus） */
+/* --------------------------------------------------- 13c. 文章评论（自建） */
 
 /*
- * 评论区是 giscus 的一个**跨域 iframe** —— 里面长什么样我们管不着，
- * 能做主的只有外面这层容器：边距、宽度、以及"还没配好"时的提示。
- * iframe 的高度由 giscus 自己 postMessage 出来、它自己设 style.height。
+ * 评论区是自己实现的：数据是服务器上的 comments/<文章 id>.json，
+ * 不依赖任何第三方服务，样式也全归我们 —— 用的还是站点这套 token，
+ * 所以白天/黑夜自动跟着走，不需要像 iframe 那样把主题"推"进去。
  */
-#sfm-comments iframe.giscus-frame {
-    width: 100%;
-    border: 0;
-    /* 深色模式下 iframe 自己的白底会先露一帧，让容器顶着主题色 */
-    background: transparent;
-    color-scheme: light dark;
-}
 
-/* 还没在 GitHub 上配好时，显示这句人话，而不是一个空白框 */
-.comments-setup {
-    padding: 22px 24px;
-    border-radius: var(--r-md);
-    border: 1px dashed var(--line-strong);
-    background: var(--glass-bg-2);
-    color: var(--ink-2);
-    font-size: 0.95rem;
-    line-height: 1.85;
-}
-
-.comments-setup b {
-    display: block;
-    color: var(--ink-1);
-    font-size: 1.05rem;
-    margin-bottom: 6px;
-}
-
-.comments-setup p {
-    margin: 6px 0 0;
-}
-
-.comments-setup code {
-    padding: 1px 6px;
-    border-radius: 6px;
-    background: var(--brand-tint);
-    color: var(--brand-ink);
-    font-size: 0.88em;
-}
-
-.comments-setup .dim {
-    color: var(--ink-2);
-    opacity: 0.72;
-    font-size: 0.9rem;
-}
-
-/* 文章底下的评论区：小标题那一行 */
 .comments-head {
     display: flex;
     align-items: baseline;
@@ -2253,23 +2278,242 @@ html.has-reveal [data-reveal].is-in {
     line-height: 1.8;
 }
 
-.comments-tip a {
-    color: var(--brand-ink);
-}
-
 /*
  * 评论区那块 panel。
  * 上面的 .post-nav 自己只留了 30px 的上边距，评论区紧跟着会显得挤 ——
- * 这里单独拉开一档（比普通 panel 之间的间距大），让"看完这一篇 → 去上一篇/下一篇"
- * 和"往下看评论"是两件事。
+ * 这里单独拉开一档，让"看完这一篇 → 去上一篇/下一篇"和"往下看评论"是两件事。
  */
 .comments-panel {
     margin-top: 48px;
 }
 
-/* 评论区内部：标题和 iframe 之间留一点空 */
 #sfm-comments {
-    margin-top: 22px;
+    margin-top: 18px;
+}
+
+/* -------------------------------------------------------- 评论：发表表单 */
+
+.cmt-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cmt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.cmt-input {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line-strong);
+    background: var(--glass-bg-2);
+    color: var(--ink-1);
+    font-size: 0.95rem;
+    transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.cmt-input::placeholder {
+    color: var(--ink-4);
+}
+
+.cmt-input:focus {
+    outline: none;
+    border-color: var(--brand-ring);
+    box-shadow: 0 0 0 4px var(--brand-tint);
+}
+
+.cmt-textarea {
+    resize: vertical;
+    min-height: 108px;
+    line-height: 1.8;
+    font-family: inherit;
+}
+
+/*
+ * 蜜罐。
+ * 故意**不用 display:none** —— 有些脚本会跳过"不可见"的字段，反而躲过这一关；
+ * 挪到屏幕外留 1px，机器人照样会当普通输入框填上。
+ */
+.cmt-hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.cmt-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.cmt-hint {
+    min-height: 1.2em;
+    color: var(--ink-3);
+    font-size: 0.88rem;
+}
+
+.cmt-hint.is-ok { color: #10b981; }
+.cmt-hint.is-err { color: #ef4444; }
+
+.cmt-submit {
+    padding: 11px 24px;
+    border-radius: var(--r-pill);
+    background: var(--grad-brand);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    box-shadow: 0 10px 24px -12px var(--brand-ring);
+    transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.cmt-submit:hover { transform: translateY(-2px); }
+.cmt-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+/* 「正在回复 @某某」那条 */
+.cmt-reply-to {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-radius: var(--r-sm);
+    border: 1px dashed var(--brand-ring);
+    background: var(--brand-tint);
+    color: var(--ink-2);
+    font-size: 0.88rem;
+}
+
+.cmt-reply-to b { color: var(--brand-ink); }
+
+/*
+ * 注意：`.cmt-reply-to` 自己设了 display:flex，而 [hidden] 的 display:none
+ * 来自浏览器默认样式表 —— **作者样式永远赢过默认样式**，
+ * 所以不给它补这一条，"正在回复"那条会一直挂在表单上面。
+ */
+.cmt-reply-to[hidden] { display: none; }
+
+.cmt-reply-to button {
+    margin-left: auto;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+    text-decoration: underline;
+}
+
+/* ------------------------------------------------------------ 评论：列表 */
+
+.cmt-head {
+    margin: 30px 0 16px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 0.88rem;
+    letter-spacing: 0.02em;
+}
+
+.cmt-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.cmt-item {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+/* 头像：按昵称算出来的渐变色块 —— 不去请求 Gravatar 之类的外部服务 */
+.cmt-av {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    user-select: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.cmt-body { min-width: 0; }
+
+.cmt-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.cmt-name {
+    color: var(--ink-1);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.cmt-name a {
+    border-bottom: 1px solid var(--brand-ring);
+    transition: color 0.25s var(--ease);
+}
+
+.cmt-name a:hover { color: var(--brand-ink); }
+
+.cmt-time {
+    color: var(--ink-4);
+    font-size: 0.8rem;
+}
+
+.cmt-reply-btn {
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    color: var(--ink-3);
+    font-size: 0.82rem;
+    transition: color 0.25s var(--ease), background 0.25s var(--ease);
+}
+
+.cmt-reply-btn:hover {
+    color: var(--brand-ink);
+    background: var(--brand-tint);
+}
+
+/* 正文：白空格设成 pre-wrap 就能让换行生效，同时不用把文本拼成 HTML */
+.cmt-text {
+    color: var(--ink-2);
+    font-size: 0.96rem;
+    line-height: 1.85;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* 一级回复 */
+.cmt-children {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+    padding-left: 14px;
+    border-left: 2px solid var(--line);
+    /*
+     * `.cmt-item` 是 40px + 1fr 的两列 grid，而回复列表是它的第三个子元素 ——
+     * 不写这一行的话它会被塞进**第一列**（40px），于是回复变成一列一个字。
+     */
+    grid-column: 1 / -1;
+}
+
+.cmt-empty {
+    color: var(--ink-3);
+    font-size: 0.92rem;
 }
 
 /* ------------------------------------------------- 14b. 终端雨 + 指针光 */
@@ -2541,6 +2785,9 @@ html.theme-switching *::after {
     .post-nav .next { text-align: left; align-items: flex-start; }
     /* 窄屏上 48px 太空，收一档但仍旧比 .post-nav 的 30px 显眼 */
     .comments-panel { margin-top: 36px; }
+    /* 昵称 / 网站两个输入框在窄屏上竖着排，别挤成一条 */
+    .cmt-row { grid-template-columns: minmax(0, 1fr); }
+    .cmt-submit { width: 100%; }
     .to-top { right: 14px; bottom: 14px; }
     .pane-preview { display: none; }
     .fld-date { flex: 0 0 130px; }

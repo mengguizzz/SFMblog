@@ -7,7 +7,7 @@
     <title>控制台 · 梦归の小站</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" href="./src/webpic-head.png" type="image/png">
-    <link rel="stylesheet" href="./css/style.css?v=20261053a">
+    <link rel="stylesheet" href="./css/style.css?v=20261056a">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
     <script>
         document.documentElement.dataset.theme = 'dark';
@@ -82,6 +82,7 @@
         <div class="drawer-tabs">
             <button class="drawer-tab is-on" type="button" data-tab="posts">文章</button>
             <button class="drawer-tab" type="button" data-tab="trash">回收站</button>
+            <button class="drawer-tab" type="button" data-tab="comments">评论</button>
         </div>
         <button class="tool" id="btn-drawer-close" type="button" aria-label="关闭">✕</button>
     </div>
@@ -93,7 +94,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-<script src="./js/blog.js?v=20261053a"></script>
+<script src="./js/blog.js?v=20261056a"></script>
 <script>
 (function () {
     'use strict';
@@ -378,11 +379,120 @@
         return d;
     }
 
+    /*
+     * 评论管理里的一行。
+     * 内容、昵称全是用户输入，所以**一律用 textContent 塞**，不拼 HTML。
+     */
+    function commentRow(it) {
+        var box = document.createElement('div');
+        box.className = 'drawer-cmt'
+            + (it.status === 'pending' ? ' is-pending' : '')
+            + (it.status === 'spam' ? ' is-spam' : '');
+
+        var head = document.createElement('div');
+        head.className = 'dc-head';
+
+        if (it.status !== 'approved') {
+            var badge = document.createElement('span');
+            badge.className = 'dc-badge';
+            badge.textContent = it.status === 'pending' ? '待审' : '垃圾';
+            head.appendChild(badge);
+        }
+
+        var who = document.createElement('b');
+        who.textContent = it.name;
+        head.appendChild(who);
+
+        var meta = document.createElement('span');
+        meta.className = 'dc-meta';
+        meta.textContent = '#' + it.post + ' ' + it.postTitle + ' · ' +
+            new Date(it.ts * 1000).toLocaleString('zh-CN');
+        head.appendChild(meta);
+        box.appendChild(head);
+
+        var text = document.createElement('p');
+        text.className = 'dc-text';
+        text.textContent = it.text;
+        box.appendChild(text);
+
+        var acts = document.createElement('div');
+        acts.className = 'dc-acts';
+
+        if (it.status !== 'approved') {
+            var ok = document.createElement('button');
+            ok.type = 'button';
+            ok.className = 'ok';
+            ok.textContent = '通过';
+            ok.addEventListener('click', async function () {
+                try {
+                    await apiCall({ action: 'comment-status', post: it.post, id: it.id, status: 'approved' });
+                    toast('已通过', 'ok');
+                    loadList();
+                } catch (e) { toast('操作失败：' + e.message, 'err'); }
+            });
+            acts.appendChild(ok);
+        } else {
+            var back = document.createElement('button');
+            back.type = 'button';
+            back.textContent = '撤下';
+            back.addEventListener('click', async function () {
+                try {
+                    await apiCall({ action: 'comment-status', post: it.post, id: it.id, status: 'pending' });
+                    toast('已撤下，等审核', 'ok');
+                    loadList();
+                } catch (e) { toast('操作失败：' + e.message, 'err'); }
+            });
+            acts.appendChild(back);
+        }
+
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'del';
+        del.textContent = '删除';
+        del.addEventListener('click', async function () {
+            if (!confirm('删除这条评论？\n\n' + it.name + '：' + it.text.slice(0, 60))) return;
+            try {
+                await apiCall({ action: 'comment-delete', post: it.post, id: it.id });
+                toast('已删除', 'ok');
+                loadList();
+            } catch (e) { toast('删除失败：' + e.message, 'err'); }
+        });
+        acts.appendChild(del);
+
+        box.appendChild(acts);
+        return box;
+    }
+
     async function loadList() {
         var list = $('drawer-list');
-        list.innerHTML = drawerTab === 'trash'
-            ? '<div class="drawer-empty">读取回收站…</div>'
-            : '';
+        list.innerHTML = drawerTab === 'trash' ? '<div class="drawer-empty">读取回收站…</div>'
+            : drawerTab === 'comments' ? '<div class="drawer-empty">读取评论…</div>'
+                : '';
+
+        /* ---------------- 评论管理 ---------------- */
+        if (drawerTab === 'comments') {
+            var cdata;
+            try {
+                cdata = await apiCall({ action: 'comments-admin' });
+            } catch (e) {
+                list.innerHTML = '';
+                list.appendChild(emptyNote('读取评论失败：' + e.message));
+                return;
+            }
+            list.innerHTML = '';
+            if (!cdata.items.length) {
+                list.appendChild(emptyNote('还没有任何评论。'));
+                return;
+            }
+            if (cdata.pending) {
+                var tip = document.createElement('div');
+                tip.className = 'drawer-empty';
+                tip.textContent = '有 ' + cdata.pending + ' 条评论等着你点通过。';
+                list.appendChild(tip);
+            }
+            cdata.items.forEach(function (it) { list.appendChild(commentRow(it)); });
+            return;
+        }
 
         if (drawerTab === 'trash') {
             var data;

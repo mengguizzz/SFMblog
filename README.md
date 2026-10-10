@@ -506,66 +506,72 @@ src/live2d/
 验证脚本 `work/qa/verify-hitokoto.js` 两种场景都覆盖了：
 正常联网（气泡换成真的句子）和把接口掐掉（气泡换成本地句子、**且不能有未捕获报错**）。
 
-### 文章评论（giscus）
+### 文章评论（自己实现的）
 
 **只在文章页的底部**，首页 / 归档 / 关于都没有 —— 评论本来就该跟着文章走。
 
-用的是 [giscus](https://giscus.app/)：评论存进 **本仓库的 GitHub Discussions**，
-服务器上不放数据库 —— 和这个站"零数据库、备份就是复制文件夹"的思路是一路的。
-访客用 GitHub 账号登录即可发言，不想登录也可以直接去仓库里回。
+评论**存在本站自己的服务器上**，一篇一个文件：
 
-#### 三步配置（只做一次）
+```text
+comments/
+├── 0.json                 第 0 篇文章的评论
+├── 1.json
+├── .rate.json             限流记录（按 IP 哈希，10 分钟窗口）
+└── .backup/               每次写入前的上一版，手滑还能捞
+```
 
-`js/blog.js` 里的 `GISCUS` 已经把 `repo` / `repoId` 填好了，**只差 `categoryId`**：
+跟 `blogs/default.md` 是同一个路子：**不引数据库**，直接看、直接备份、直接拷走。
+和 giscus / utterances / Disqus 那几套比，最大的好处是不用再挂一个外部依赖 ——
+既不用把仓库公开、给它装 App，访客也不用注册，页面上更是一个第三方请求都没有。
 
-1. 仓库 **Settings → General → Features**，把 **Discussions** 勾上；
-2. 给仓库安装 giscus App：<https://github.com/apps/giscus>（只授权这一个仓库就行）；
-3. 打开 <https://giscus.app/>，填上仓库名，把生成结果里的 **`data-category-id`**
-   （形如 `DIC_kwDOT6x8ks4C...`）抄进 `js/blog.js` 的 `GISCUS.categoryId`。
+#### 防滥用：三层，都不需要访客做任何事
 
-   ```js
-   var GISCUS = {
-       repo: 'mengguizzz/SFMblog',
-       repoId: 'R_kgDOT6x8kg',
-       category: 'Announcements',
-       categoryId: '',          // ← 填上就自动启用
-   };
-   ```
+| 层 | 做法 | 结果 |
+| --- | --- | --- |
+| 蜜罐 | 表单里藏一个屏幕外的输入框，真人看不见、机器人爱填 | 填了就判为 `spam` |
+| 停留时间 | 提交时带上"打开页面到现在过了多久"，不足 3 秒的判为脚本 | 判为 `spam` |
+| 限流 | 按 IP 哈希：**两条之间至少 20 秒，10 分钟内最多 8 条** | 超了返回 429 + 还要等几秒 |
 
-没填之前不会摆一个空白框，而是显示一句"还没接上 + 该做什么"的提示；填好后刷新即可，不用改别的地方。
+> 前两层**不会给机器人任何反馈** —— 照常回 `success`，只是状态记成 `spam`、
+> 不在页面上显示；站长在控制台里照样看得到。
 
-#### 几个实现细节
+#### 审核
 
-- **每篇文章各自一个讨论**：`data-term` 用的是**文章 id**（本站 id 就是原始块下标，
-  删掉前面的文章也不会变），这样改域名、改参数都不会把评论聊丢。
-  想手动把某个页面指到指定讨论，给 `window.SFM_GISCUS_CONFIG` 塞一个 `term` 就行。
-- **主题跟着站点走**：白天/黑夜切换时会用 giscus 官方的
-  `postMessage({giscus:{setConfig:{theme}}})` 推给它，不会出现"页面黑了评论区还是白的"。
-- **CSP 要放行三处**，少一个都不行：
+`api.php` 顶部有个开关，默认**开着**：
 
-  | 指令 | 放行 | 为什么 |
-  | --- | --- | --- |
-  | `script-src` | `https://giscus.app` | 取 `client.js` |
-  | `style-src` | `https://giscus.app` | 它会插一张 `default.css` |
-  | `frame-src` | `https://giscus.app` | 评论区本体是 iframe |
+```php
+$COMMENT_MODERATE = true;   // 新评论先进待审核，站长点了通过才显示
+```
 
-  > **`frame-src` 最容易漏**：原来根本没有这条指令，于是回落到 `default-src 'self'`，
-  > iframe 会被直接拦掉 —— 表现是界面上什么都不出来。
+想发出来就立刻可见，改成 `false`（或者在 `config.php` 里覆盖）即可。
+控制台的抽屉里多了个**「评论」**页签：待审的会带上"待审"标记，
+每条都能**通过 / 撤下 / 删除**（删主评论会连它的回复一起删）。
 
-  依然没有放开 `unsafe-eval`。
+#### 数据与隐私
+
+- 每条评论存：`id / parent / name / site / text / ts / status / ip`
+- `ip` 存的是 **sha1(客户端 IP) 的前 8 位**，只用于限流；
+  **任何公开接口都不会返回它**，原始 IP 一律不落盘。
+- `comments/` 目录在 nginx 里和 `blogs/` 一个待遇：`location ^~ /comments/ { deny all; }`，
+  直接访问 `comments/1.json` 是 **403**。
+- 文章被**彻底删除**时，它的评论文件会一起清掉；只是"移到回收站"的话评论留着，
+  撤销删除后评论还在。
+
+#### XSS
+
+前端**全程用 `textContent`** 渲染昵称、网址和正文，没有一处拼接用户输入成 HTML。
+所以 `<img src=x onerror=...>` 这类只会原样显示出来，不会执行。
+这比维护一份"过滤黑名单"可靠得多。
 
 #### 怎么验证
 
-`work/qa/verify-comments.js`（18 项）分三种情况测，关键是**能区分
-"我们的代码有问题"和"GitHub 那边还没配好"** —— 这两件事在浏览器里长得像：
+`work/qa/verify-comments.js`（27 项）会真的往服务器上写评论再清理，覆盖：
 
-- 没填 `categoryId`：出提示、不去拉 giscus、零报错；
-- 填了之后（拿一套公开仓库的配置当测试）：`client.js` 能加载、iframe 能建起来、
-  `repo / repoId / categoryId / term / theme` 全都原样传到了 giscus、
-  iframe 里确实渲染出了 giscus 的界面、**零 CSP 违规**。
-  此时如果仓库那边没装 App，界面里会写 `giscus is not installed on this repository`
-  —— 那是仓库侧状态，脚本里单独放行这一条，其余报错照旧会失败。
-- 首页 / 归档 / 关于没有评论区；`post.html` 不带 `?id=` 时整块隐藏。
+发表 → 待审不可见 → 后台通过后可见 / XSS 原样显示且不执行 /
+蜜罐判 spam / 秒发判 spam / 超长·非法网址·空内容被拒 /
+紧随其后的第二条被限流 / 回复嵌套渲染 / `comments/1.json` 403 /
+公开接口不含 ip 字段 / 没有引入任何新的第三方域名 / 后台删除 /
+**最后把 `comments/1.json` 还原并断言与测试前逐字节一致**。
 
 ### ⚠️ 一个把整个背景弄丢的坑
 

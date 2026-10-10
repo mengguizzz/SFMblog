@@ -351,7 +351,177 @@ function write_raw(string $file, array $raw, string $backupDir): void
 
 /* --------------------------------------------------------------------- 配置 */
 
+/* ----------------------------------------------------------------------- 评论 */
+/*
+ * 自己实现的评论：**存文件，不引数据库**，跟 blogs/default.md 是同一个路子。
+ *
+ *   每篇文章一个文件：comments/<文章 id>.json
+ *   { "items": [ { id, parent, name, site, text, ts, status, ip } ] }
+ *
+ *   status 三种：
+ *     approved —— 正常显示
+ *     pending  —— 等站长在控制台里点通过
+ *     spam     —— 蜜罐被填了 / 提交得比打字还快；**不显示，但保留着**，
+ *                 既不给机器人任何反馈（照常返回成功），站长又能在控制台里看到
+ *
+ *   `ip` 存的是 sha1(客户端 IP) 的前 8 位 —— 只用来限流，
+ *   **任何接口都不会把它返回出去**，也不落原始 IP。
+ *
+ * 并发：读-改-写全部在 comments/<id>.json.lock 的排它锁里做，
+ * 两个人同时提交不会互相覆盖（先拿锁，再读一次，再写）。
+ */
+
+$COMMENT_DIR      = __DIR__ . '/comments';
+$COMMENT_BACKUP   = $COMMENT_DIR . '/.backup';
+$COMMENT_MAX_LEN  = 3000;      // 正文上限（字符数，中文一个字算一个）
+$COMMENT_NAME_LEN = 40;
+$COMMENT_MIN_GAP  = 20;        // 同一来源两条评论的最小间隔（秒）
+$COMMENT_RATE_MAX = 8;         // 限流窗口内最多几条
+$COMMENT_RATE_WIN = 600;       // 限流窗口（秒）
+$COMMENT_MIN_ELAPSE = 3;       // 打开页面到点提交至少 3 秒（防脚本秒发）
+
+function client_ip_hash(): string
+{
+    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    return substr(sha1($ip . '|sfmblog'), 0, 8);
+}
+
+function comment_file(string $dir, int $pid): string
+{
+    return $dir . '/' . $pid . '.json';
+}
+
+/** 拿排它锁；拿不到就返回 null（调用方照旧往下走，最坏只是并发时可能丢一条） */
+function comments_lock(string $file)
+{
+    $fp = @fopen($file . '.lock', 'c');
+    if (!$fp) {
+        return null;
+    }
+    if (!flock($fp, LOCK_EX)) {
+        fclose($fp);
+        return null;
+    }
+    return $fp;
+}
+
+function comments_unlock($fp): void
+{
+    if ($fp) {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+}
+
+function read_comments(string $file): array
+{
+    if (!is_file($file)) {
+        return [];
+    }
+    $raw = @file_get_contents($file);
+    if ($raw === false || $raw === '') {
+        return [];
+    }
+    $data = json_decode($raw, true);
+    if (!is_array($data) || !isset($data['items']) || !is_array($data['items'])) {
+        return [];
+    }
+    return array_values(array_filter($data['items'], 'is_array'));
+}
+
+function write_comments(string $file, array $items, string $backupDir): bool
+{
+    if (!is_dir($backupDir)) {
+        @mkdir($backupDir, 0700, true);
+    }
+    if (is_file($file)) {
+        @copy($file, $backupDir . '/' . basename($file) . '.bak');
+    }
+    $json = json_encode(
+        ['items' => array_values($items)],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
+    );
+    return atomic_write($file, ($json === false ? '{"items":[]}' : $json) . "\n");
+}
+
+/** 对外的字段（**不带 ip**） */
+function comment_public(array $c): array
+{
+    return [
+        'id'     => (string)($c['id'] ?? ''),
+        'parent' => isset($c['parent']) && $c['parent'] !== null ? (string)$c['parent'] : null,
+        'name'   => (string)($c['name'] ?? ''),
+        'site'   => (string)($c['site'] ?? ''),
+        'text'   => (string)($c['text'] ?? ''),
+        'ts'     => (int)($c['ts'] ?? 0),
+    ];
+}
+
+/**
+ * 限流闸门。返回 0 = 放行；> 0 = 还要等多少秒。
+ * 顺手把过期记录清掉，所以 comments/.rate.json 不会越滚越大。
+ */
+function rate_gate(string $dir, string $iphash, int $gap, int $max, int $win): int
+{
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+        return 0;                       // 目录都建不了，就别拦着人了
+    }
+    $file = $dir . '/.rate.json';
+    $fp = @fopen($file, 'c+');
+    if (!$fp) {
+        return 0;
+    }
+    flock($fp, LOCK_EX);
+
+    $data = json_decode((string)stream_get_contents($fp), true);
+    if (!is_array($data)) {
+        $data = [];
+    }
+    $now = time();
+    foreach ($data as $k => $list) {
+        $keep = [];
+        foreach ((array)$list as $t) {
+            if (is_int($t) && $now - $t < $win) {
+                $keep[] = $t;
+            }
+        }
+        if ($keep) {
+            $data[$k] = $keep;
+        } else {
+            unset($data[$k]);
+        }
+    }
+
+    $mine  = isset($data[$iphash]) && is_array($data[$iphash]) ? $data[$iphash] : [];
+    $retry = 0;
+    if ($mine) {
+        $last = end($mine);
+        if ($now - $last < $gap) {
+            $retry = $gap - ($now - $last);
+        }
+    }
+    if ($retry === 0 && count($mine) >= $max) {
+        $retry = $win - ($now - $mine[0]);
+    }
+    if ($retry === 0) {
+        $mine[] = $now;
+        $data[$iphash] = $mine;
+    }
+
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, (string)json_encode($data));
+    fflush($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    return max(0, (int)$retry);
+}
+
 $EXPECTED_HASH = '';
+// 新评论要不要先审核：true = 进待审核列表，站长在控制台点通过才显示。
+// 想让它发出来就直接可见，把这个改成 false（也可以在 config.php 里覆盖）。
+$COMMENT_MODERATE = true;
 $CONFIG = __DIR__ . '/config.php';
 if (is_file($CONFIG)) {
     require $CONFIG;                       // 可在该文件里定义 $EXPECTED_HASH
@@ -415,6 +585,109 @@ if ($action === 'post') {
     $post = post_meta($raw[$pid], $pid);
     $post['body'] = body_of($raw[$pid]);
     respond(['success' => true, 'post' => $post]);
+}
+
+/* --------------------------------------------------------------------- 评论 */
+/* 这两个是**公开**接口：不登录也能看评论、发评论。 */
+
+/** 取某篇文章的评论（只给 approved 的） */
+if ($action === 'comments') {
+    $pid = (int)($_REQUEST['id'] ?? -1);
+    if (!is_valid_post($raw, $pid) || deleted_at($raw[$pid]) !== null) {
+        respond(['error' => 'Post not found.'], 404);
+    }
+    $items = read_comments(comment_file($COMMENT_DIR, $pid));
+    $out   = [];
+    foreach ($items as $c) {
+        if (($c['status'] ?? '') === 'approved') {
+            $out[] = comment_public($c);
+        }
+    }
+    respond([
+        'success'  => true,
+        'items'    => $out,
+        'total'    => count($out),
+        'moderate' => (bool)$COMMENT_MODERATE,
+    ]);
+}
+
+/** 发一条评论 */
+if ($action === 'comment') {
+    $pid = (int)($_POST['id'] ?? -1);
+    if (!is_valid_post($raw, $pid) || deleted_at($raw[$pid]) !== null) {
+        respond(['error' => 'Post not found.'], 404);
+    }
+
+    $name   = trim((string)($_POST['name'] ?? ''));
+    $text   = (string)($_POST['text'] ?? '');
+    $site   = trim((string)($_POST['site'] ?? ''));
+    $parent = trim((string)($_POST['parent'] ?? ''));
+    $honey  = (string)($_POST['hp'] ?? '');
+    $elapse = (int)($_POST['elapsed'] ?? -1);
+
+    // 统一换行 + 去掉控制字符（里面有 \x00 之类的会把 JSON 写坏）
+    $text = str_replace(["\r\n", "\r"], "\n", $text);
+    $text = (string)preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
+    $text = (string)preg_replace('/\n{4,}/', "\n\n\n", $text);
+    $text = trim($text);
+    $name = trim((string)preg_replace('/[\x00-\x1F\x7F]/u', '', $name));
+    $site = (string)preg_replace('/[\x00-\x1F\x7F]/u', '', $site);
+
+    if ($name === '') {
+        $name = '游客';
+    }
+    if (mb_strlen($name, 'UTF-8') > $COMMENT_NAME_LEN) {
+        respond(['error' => '昵称太长了（最多 ' . $COMMENT_NAME_LEN . ' 个字）。'], 400);
+    }
+    if ($text === '') {
+        respond(['error' => '内容不能是空的。'], 400);
+    }
+    if (mb_strlen($text, 'UTF-8') > $COMMENT_MAX_LEN) {
+        respond(['error' => '内容太长了（最多 ' . $COMMENT_MAX_LEN . ' 个字）。'], 400);
+    }
+    if ($site !== '' && (mb_strlen($site, 'UTF-8') > 200 || preg_match('#^https?://#i', $site) !== 1)) {
+        respond(['error' => '网址要以 http:// 或 https:// 开头。'], 400);
+    }
+
+    $iphash = client_ip_hash();
+    $retry  = rate_gate($COMMENT_DIR, $iphash, $COMMENT_MIN_GAP, $COMMENT_RATE_MAX, $COMMENT_RATE_WIN);
+    if ($retry > 0) {
+        respond(['error' => '发得太快了，' . $retry . ' 秒后再试试。', 'retry_after' => $retry], 429);
+    }
+
+    // 蜜罐被填 / 提交得比打字还快 -> 按机器人处理：
+    // **照常回成功**（不给对方任何线索），但状态记成 spam，不显示、只有站长看得到。
+    $bot    = ($honey !== '') || ($elapse >= 0 && $elapse < $COMMENT_MIN_ELAPSE * 1000);
+    $status = $bot ? 'spam' : ($COMMENT_MODERATE ? 'pending' : 'approved');
+
+    $file = comment_file($COMMENT_DIR, $pid);
+    $fp   = comments_lock($file);
+    $items = read_comments($file);        // 拿到锁之后再读，避免并发时互相覆盖
+    $ids   = array_map(function ($c) { return (string)($c['id'] ?? ''); }, $items);
+    if ($parent !== '' && !in_array($parent, $ids, true)) {
+        $parent = '';                      // 回复的目标不存在就当普通评论
+    }
+
+    $item = [
+        'id'     => 'c' . bin2hex(random_bytes(5)),
+        'parent' => $parent === '' ? null : $parent,
+        'name'   => $name,
+        'site'   => $site,
+        'text'   => $text,
+        'ts'     => time(),
+        'status' => $status,
+        'ip'     => $iphash,
+    ];
+    $items[] = $item;
+    write_comments($file, $items, $COMMENT_BACKUP);
+    comments_unlock($fp);
+
+    respond([
+        'success' => true,                              // 被当成垃圾也照样"成功"
+        'status'  => $status,
+        'pending' => $status !== 'approved',
+        'comment' => $status === 'approved' ? comment_public($item) : null,
+    ]);
 }
 
 /* --------------------------------------------------------------------- 鉴权 */
@@ -594,6 +867,12 @@ if ($action === 'trash-purge') {
         $title = title_of($raw[$id]);
         array_splice($raw, $id, 1);
         write_raw($MD_FILE, $raw, $BACKUP_DIR);
+        // 文章都彻底删了，它的评论也一起清掉（软删除阶段是留着的，撤销删除评论还在）
+        $cf = comment_file($COMMENT_DIR, $id);
+        if (is_file($cf)) {
+            @unlink($cf);
+            @unlink($cf . '.lock');
+        }
         respond(['success' => true, 'message' => 'Permanently deleted.', 'title' => $title]);
     }
 
@@ -605,6 +884,100 @@ if ($action === 'trash-purge') {
     }
     write_raw($MD_FILE, $kept, $BACKUP_DIR);
     respond(['success' => true, 'message' => 'Trash emptied.']);
+}
+
+/* --------------------------------------------------------------- 评论（管理） */
+/* 下面这几个都要登录。前端把用户输入一律用 textContent 渲染，所以这里原样返回原文。 */
+
+/** 所有评论（含待审核 / 垃圾），按时间倒序 */
+if ($action === 'comments-admin') {
+    $items = [];
+    foreach ((glob($COMMENT_DIR . '/*.json') ?: []) as $f) {
+        $base = basename($f, '.json');
+        if (preg_match('/^\d+$/', $base) !== 1) {
+            continue;                       // .rate.json / .backup 之类跳过
+        }
+        $pid   = (int)$base;
+        $title = is_valid_post($raw, $pid) ? title_of($raw[$pid]) : '（文章已不存在）';
+        foreach (read_comments($f) as $c) {
+            $items[] = [
+                'id'        => (string)($c['id'] ?? ''),
+                'parent'    => isset($c['parent']) && $c['parent'] !== null ? (string)$c['parent'] : '',
+                'name'      => (string)($c['name'] ?? ''),
+                'site'      => (string)($c['site'] ?? ''),
+                'text'      => (string)($c['text'] ?? ''),
+                'ts'        => (int)($c['ts'] ?? 0),
+                'status'    => (string)($c['status'] ?? 'approved'),
+                'post'      => $pid,
+                'postTitle' => $title,
+            ];
+        }
+    }
+    usort($items, function (array $a, array $b): int {
+        return $b['ts'] <=> $a['ts'];
+    });
+    $pending = 0;
+    foreach ($items as $c) {
+        if ($c['status'] === 'pending') {
+            $pending++;
+        }
+    }
+    respond(['success' => true, 'items' => $items, 'pending' => $pending]);
+}
+
+/** 改状态：通过 / 退回待审 / 标记垃圾 */
+if ($action === 'comment-status') {
+    $pid  = (int)($_POST['post'] ?? -1);
+    $cid  = (string)($_POST['id'] ?? '');
+    $next = (string)($_POST['status'] ?? '');
+    if (!in_array($next, ['approved', 'pending', 'spam'], true)) {
+        respond(['error' => 'Bad status.'], 400);
+    }
+
+    $file  = comment_file($COMMENT_DIR, $pid);
+    $fp    = comments_lock($file);
+    $items = read_comments($file);
+    $hit   = false;
+    foreach ($items as $k => $c) {
+        if ((string)($c['id'] ?? '') === $cid) {
+            $items[$k]['status'] = $next;
+            $hit = true;
+        }
+    }
+    if ($hit) {
+        write_comments($file, $items, $COMMENT_BACKUP);
+    }
+    comments_unlock($fp);
+    if (!$hit) {
+        respond(['error' => 'Comment not found.'], 404);
+    }
+    respond(['success' => true, 'status' => $next]);
+}
+
+/** 删一条评论（连它的回复一起删；回复只有一层） */
+if ($action === 'comment-delete') {
+    $pid = (int)($_POST['post'] ?? -1);
+    $cid = (string)($_POST['id'] ?? '');
+
+    $file  = comment_file($COMMENT_DIR, $pid);
+    $fp    = comments_lock($file);
+    $items = read_comments($file);
+    $kept  = [];
+    $gone  = 0;
+    foreach ($items as $c) {
+        $id = (string)($c['id'] ?? '');
+        $p  = isset($c['parent']) && $c['parent'] !== null ? (string)$c['parent'] : '';
+        if ($id === $cid || $p === $cid) {
+            $gone++;
+            continue;
+        }
+        $kept[] = $c;
+    }
+    if ($gone > 0) {
+        write_comments($file, $kept, $COMMENT_BACKUP);
+    }
+    comments_unlock($fp);
+    respond(['success' => true, 'removed' => $gone]);
 }
 
 respond(['error' => 'Unknown action.'], 400);
