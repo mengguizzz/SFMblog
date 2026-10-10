@@ -269,6 +269,11 @@ server {
   View Transitions 是在主题改完后才截"新画面"的，此时若元素还在做颜色过渡，
   截到的就是旧颜色，动画结束时真画面才补上 —— 看起来就是"闪一下"。
   注意这里只关 `transition` 不碰 `animation`，否则会把圆形擦除一起干掉。
+- **两个擦除动画都带 `animation-fill-mode: forwards`**：
+  动画播完到伪元素树销毁之间还会渲染几帧，没有 `forwards` 的话
+  `clip-path` 会失效、旧快照以整屏原样露出来（就是"闪一下"）。
+  收缩那条末尾还叠了 `opacity: 0` 兜底 —— `clip-path` 依赖 CSS 变量，
+  变量清掉后半径会回退到默认值。
 
 ---
 *Talk is cheap. Show me the code.*

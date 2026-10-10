@@ -245,12 +245,24 @@
 
         var transition = document.startViewTransition(function () { applyTheme(next, true); });
         transition.finished.finally(function () {
-            root.classList.remove('theme-wipe-in', 'theme-wipe-out');
-            root.classList.remove('theme-switching');
-            root.style.removeProperty('--wipe-x');
-            root.style.removeProperty('--wipe-y');
-            root.style.removeProperty('--wipe-r');
-            switchTheme.busy = false;
+            /*
+             * 等两帧再清理。
+             *
+             * finished 触发时伪元素树可能还没销毁；这时候如果先把 theme-wipe-* 摘掉，
+             * 基础规则里的 animation:none 就会生效 —— 旧快照失去 clip-path，
+             * 于是以整屏原样画出一帧。旧快照是旧主题的颜色，看上去就是"闪一下"。
+             * （实测录屏抓到了这一帧。）
+             */
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    root.classList.remove('theme-wipe-in', 'theme-wipe-out');
+                    root.classList.remove('theme-switching');
+                    root.style.removeProperty('--wipe-x');
+                    root.style.removeProperty('--wipe-y');
+                    root.style.removeProperty('--wipe-r');
+                    switchTheme.busy = false;
+                });
+            });
         });
     }
 
