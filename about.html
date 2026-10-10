@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <title>关于我 · 梦归の小站</title>
-    <meta name="description" content="关于梦归：CS 在读学生，折腾 Linux、服务器、Android 类原生与网络安全。">
+    <title>关于 · SFMblog 演示站</title>
+    <meta name="description" content="关于 SFMblog：一个零数据库的单文件 Markdown 博客系统，以及它的在线演示站。">
     <meta name="theme-color" content="#fdf1f7">
     <link rel="icon" href="./src/webpic-head.png" type="image/png">
     <link rel="stylesheet" href="./css/style.css?v=20261056a">
@@ -37,7 +37,7 @@
     <nav class="nav glass" aria-label="主导航">
         <a class="nav-brand" href="index.html">
             <span class="nav-avatar" style="background-image:url('./src/webpic-head.png')" role="img" aria-label="站点头像"></span>
-            <span class="nav-name">梦归の小站<span class="accent">.</span></span>
+            <span class="nav-name">SFMblog<span class="accent">.</span></span>
         </a>
         <div class="nav-links" id="nav-links">
             <a href="index.html">首页</a>
@@ -59,9 +59,9 @@
 <main class="main" id="main">
     <div class="section-head" data-reveal>
         <div>
-            <span class="kicker">About Me</span>
-            <h1 class="section-title">关于我</h1>
-            <p class="section-sub">在软硬件的交界处寻找秩序，在代码的海洋里保持好奇。</p>
+            <span class="kicker">About</span>
+            <h1 class="section-title">关于这个演示站</h1>
+            <p class="section-sub">一个零数据库的单文件 Markdown 博客 —— 这里是它的在线演示。</p>
         </div>
     </div>
 
@@ -70,40 +70,35 @@
             <section class="panel glass sheen" data-reveal style="--d:0">
                 <h2 class="panel-title">Hello, World.</h2>
                 <div class="prose-lite">
-                    <p>你好，我是 <strong>梦归</strong>。目前是一名在读大学生，专注于瞎折腾技术开发。</p>
+                    <p>这里是 <strong>SFMblog</strong> 的演示站。</p>
+                    <p>整个博客没有数据库：文章是 <strong>blogs/default.md</strong> 一个文件，
+                        评论是 <strong>comments/</strong> 下的一堆 JSON。
+                        备份博客就是复制一个文件夹。</p>
                 </div>
 
-                <h3 class="skill-title" style="margin-top:22px">目前主要折腾</h3>
+                <h3 class="skill-title" style="margin-top:22px">它有什么</h3>
                 <ul class="fact-list">
-                    <li><span class="ico">🔐</span><span>网络安全与渗透测试</span></li>
-                    <li><span class="ico">💻</span><span>Linux 系统与服务器部署</span></li>
-                    <li><span class="ico">📱</span><span>Android 类原生编译与刷机</span></li>
+                    <li><span class="ico">📄</span><span>单文件 Markdown 数据库，不需要 MySQL</span></li>
+                    <li><span class="ico">🖥️</span><span>后端只有一个 <strong>api.php</strong>，其余全是静态文件</span></li>
+                    <li><span class="ico">💬</span><span>自实现的评论：审核 + 蜜罐 + 限流，不依赖第三方</span></li>
+                    <li><span class="ico">🎨</span><span>极光玻璃界面、白天黑夜、文章目录与阅读进度</span></li>
                 </ul>
 
-                <h3 class="skill-title" style="margin-top:24px">这个博客用来做什么</h3>
-                <ul class="fact-list">
-                    <li><span class="ico">📝</span><span>记录学习过程与项目实践</span></li>
-                    <li><span class="ico">🧭</span><span>分享实用教程与踩坑经验</span></li>
-                    <li><span class="ico">☕</span><span>偶尔发发牢骚（咳）</span></li>
-                </ul>
-
-                <blockquote class="about-quote">“折腾，是理解世界的一种方式。”</blockquote>
+                <blockquote class="about-quote">“备份博客，就是复制一个文件夹。”</blockquote>
             </section>
 
             <section class="panel glass sheen" data-reveal style="--d:1">
-                <h2 class="panel-title">动画推荐</h2>
-                <div class="interest" id="content"></div>
-                <textarea id="markdown-content" hidden>
-## 打动人心的两部作品
-
-![進撃の巨人](https://ztyou.cn/upload/p2912972913-NhHD.webp)
-
-**「進撃の巨人」** —— 自由与代价，一部把叙事结构玩到极致的作品。
-
-![CLANNAD ～AFTER STORY～](https://ztyou.cn/upload/p2221182844.webp)
-
-**CLANNAD ～AFTER STORY～** —— 关于家人、成长与「值得哭一场」的故事。
-                </textarea>
+                <h2 class="panel-title">演示站的边界</h2>
+                <ul class="fact-list">
+                    <li><span class="ico">✅</span><span>界面、动效、白天黑夜、文章渲染、看板娘、一言 —— 都能玩</span></li>
+                    <li><span class="ico">⚠️</span><span>文章列表与评论要靠 <strong>api.php</strong>：
+                        纯静态托管（比如 GitHub Pages）上看不到，部署到支持 PHP 的服务器就正常了</span></li>
+                    <li><span class="ico">🔒</span><span>后台控制台只在服务器环境可用，演示站不开放</span></li>
+                </ul>
+                <p class="credit" style="margin-top:14px">
+                    想在自己机器上跑起来，看仓库 README 的「快速开始」——
+                    生成密码哈希、填 config.php、配一段 Nginx，就完事了。
+                </p>
             </section>
         </div>
 
@@ -112,28 +107,29 @@
                 <h2 class="panel-title">Tech Stack</h2>
 
                 <div class="skill-group">
-                    <div class="skill-title">编程语言</div>
+                    <div class="skill-title">前端</div>
                     <div class="tag-row">
-                        <span class="tag">C / C++</span>
-                        <span class="tag">Java</span>
-                        <span class="tag">Bash / JS</span>
+                        <span class="tag">原生 HTML / CSS / JS</span>
+                        <span class="tag">Marked.js</span>
+                        <span class="tag">Highlight.js</span>
                     </div>
                 </div>
 
                 <div class="skill-group">
-                    <div class="skill-title">系统与架构</div>
+                    <div class="skill-title">后端</div>
                     <div class="tag-row">
-                        <span class="tag">Linux (Arch/Debian)</span>
-                        <span class="tag">Android ROM 构建</span>
-                        <span class="tag">KernelSU</span>
+                        <span class="tag">PHP 8</span>
+                        <span class="tag">单文件 Markdown</span>
+                        <span class="tag">无数据库</span>
                     </div>
                 </div>
 
                 <div class="skill-group">
-                    <div class="skill-title">工具与硬件</div>
+                    <div class="skill-title">部署</div>
                     <div class="tag-row">
-                        <span class="tag">Dell PowerEdge</span>
-                        <span class="tag">Nginx / PHP</span>
+                        <span class="tag">Nginx / OpenResty</span>
+                        <span class="tag">PHP-FPM</span>
+                        <span class="tag">无需构建</span>
                     </div>
                 </div>
 
@@ -146,7 +142,10 @@
                         <span class="tag">一言 API</span>
                     </div>
                     <p class="credit">
-                        看板娘默认是 <strong>《魔女之旅》伊蕾娜</strong>，
+                        第三方库与素材的出处、授权（含看板娘模型）都列在仓库根目录的
+                        <a href="https://github.com/mengguizzz/SFMblog/blob/main/CREDITS.md" target="_blank"
+                            rel="noopener">CREDITS.md</a>，其中这条要留意：<br>
+                        看板娘是 <strong>《魔女之旅》伊蕾娜</strong>，
                         模型为 <a href="https://www.aplaybox.com/details/model/0MAXIOhAZAUw" target="_blank"
                             rel="noopener">模之屋</a> 上由 <strong>MNDIA</strong> 配布的
                         《魔女之旅伊雷娜live2d》，作者注明<strong>禁止商用</strong>、允许二次配布与修改。
@@ -162,25 +161,16 @@
             </section>
 
             <section class="panel glass sheen" data-reveal style="--d:3">
-                <h2 class="panel-title">在玩的游戏</h2>
-                <ul class="fact-list">
-                    <li><span class="ico">🎮</span><span><b>原神</b><br><span class="skill-title" style="margin:0">UID 889496214</span></span></li>
-                    <li><span class="ico">🚄</span><span><b>崩坏：星穹铁道</b>（亚服 🌏）<br><span class="skill-title" style="margin:0">UID 834663541</span></span></li>
-                    <li><span class="ico">🎵</span><span><b>Phigros</b> —— 音游爱好者</span></li>
-                </ul>
-            </section>
-
-            <section class="panel glass sheen" data-reveal style="--d:4">
-                <h2 class="panel-title">Connect</h2>
+                <h2 class="panel-title">项目</h2>
                 <div class="contact-list">
-                    <!-- TODO: 换成你的真实邮箱 -->
-                    <a class="contact-link" href="mailto:your.email@example.com">
-                        <span class="ico">📧</span><span><b>Email</b><br><span class="skill-title" style="margin:0">your.email@example.com</span></span>
-                    </a>
-                    <a class="contact-link" href="https://github.com/mengguizzz" target="_blank" rel="noopener">
-                        <span class="ico">🐙</span><span><b>GitHub</b><br><span class="skill-title" style="margin:0">@mengguizzz</span></span>
+                    <a class="contact-link" href="https://github.com/mengguizzz/SFMblog" target="_blank" rel="noopener">
+                        <span class="ico">🐙</span><span><b>GitHub</b><br><span class="skill-title" style="margin:0">SFMblog · 源码与部署文档</span></span>
                     </a>
                 </div>
+                <p class="credit" style="margin-top:14px">
+                    第一版由 Gemini 生成；现在的版本在这套「零数据库 / 单文件 Markdown」思路上
+                    重做了界面与交互，并重写了后端接口、评论系统与安全部分。
+                </p>
             </section>
         </div>
     </div>
@@ -195,9 +185,9 @@
             <p class="footer-quote">“You cannot imprison the wind, just as you cannot imprison the will to be free.”</p>
         </div>
         <div class="footer-meta">
-            <p>&copy; 2026 梦归 · All rights reserved.</p>
-            <p>Powered by 梦归の小站 Architecture</p>
-            <p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">皖ICP备2024071168号</a></p>
+            <p>&copy; 2026 SFMblog · All rights reserved.</p>
+            <p>Powered by SFMblog</p>
+            <p>SFMblog 演示站 · 非商业项目</p>
         </div>
         <div>
             <div class="counter" title="全站访问量">
@@ -215,23 +205,5 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="./js/blog.js?v=20261056a"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var box = document.getElementById('content');
-        var src = document.getElementById('markdown-content');
-        if (!box || !src) return;
-        box.innerHTML = window.renderMarkdown ? renderMarkdown(src.value) : src.value;
-        // 图片挂了也别留一个破图标在那
-        box.querySelectorAll('img').forEach(function (img) {
-            img.loading = 'lazy';
-            img.addEventListener('error', function () {
-                var fig = document.createElement('div');
-                fig.className = 'media-fallback';
-                fig.innerHTML = '<b>封面暂时无法加载</b><span>源站可能限制了外链，或图片已被移动。</span>';
-                img.replaceWith(fig);
-            });
-        });
-    });
-</script>
 </body>
 </html>

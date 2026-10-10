@@ -1,183 +1,211 @@
-# Test
-<!-- DATE: 2026-08-15 | TAG: Test -->
+# 欢迎来到 SFMblog
+<!-- DATE: 2026-10-11 | TAG: 公告 -->
 
-```cpp
-int main() {
-return 0;
-}
-```
-```java
-var a = 0;
+这里是 **SFMblog** 的演示站 —— 一个"零数据库"的单文件 Markdown 博客。
 
-```
+整个站点的数据只有两个地方：
+
+- `blogs/default.md`：所有文章，用一个分隔符隔开（格式见《写文章》那篇）；
+- `comments/`：每篇文章的评论，一个 JSON 文件一条。
+
+没有 MySQL，没有 Node，没有构建步骤。**备份博客 = 复制一个文件夹。**
+
+## 它长什么样
+
+- 动态极光背景 + 玻璃拟态卡片，白天/黑夜按系统时间自动切换；
+- 文章页有阅读进度条、右侧目录（滚动高亮）、代码复制按钮、上下篇导航；
+- 文章底部是自实现的评论区，不用注册、不跳转第三方；
+- 桌面端左下角有个 Live2D 看板娘（默认关闭，点 🐾 唤出）。
+
+## 这个演示站能做什么
+
+界面、动效、主题、文章渲染、看板娘、一言 —— 都能玩。
+但**文章列表和评论需要 PHP**：纯静态托管（比如 GitHub Pages）上看不到，
+部署到支持 PHP 的服务器上就正常了。
+
+> 想自己跑一份，看仓库 README 的「快速开始」，大概三分钟。
 
 ---POST---
 
+# 快速开始：从下载到进入后台
+<!-- DATE: 2026-10-08 | TAG: 教程, 部署 -->
 
-# 关于Linux（Debian/Ubuntu）的基础食用指南
-<!-- DATE: 2025-08-13 | TAG: Linux -->
+## 环境要求
 
-对于我们搞程序或者喜欢瞎捣鼓的来说，有一个好用的操作系统、好的编程环境是很重要的。
+PHP 8.0+（需要 `mbstring`、`json`，图床上传还要 `fileinfo`），
+加任意 Web 服务器。不需要数据库。
 
-Debian和Ubuntu系统稳定、安全、易用，网上相关学习参考资料也很多，适合刚刚接触linux的新手，推荐使用;这里更加推荐使用ubuntu,因为更加无脑且一些配置比较简单。
+## 三步装好
 
-## 一、系统安装
+**第一步，生成密码。**
 
-安装过程比较简单，在网上可以找到许多教程，这里简单说一下。
-
-#### 1、系统下载
-
-在windows环境下用浏览器打开[Delian](https://www.debian.org/)或者[Ubuntu](https://ubuntu.com/)的官网，找到download按钮（注意下载桌面版的，这样对于小白来说比较友好，也可以下载无桌面版本的以后再安装桌面），点击即可下载，下载后的文件应为Ubuntu-xxxx-xxxx.iso。（如果下载缓慢请使用魔法或者国内镜像站）
-
-![img](https://ztyou.cn/upload/image.png)
-
-#### 2、制作启动盘
-
-windows下推荐两种方式：一种是刷入u盘，另一种是通过ventoy启动;不过需要注意的是u盘大小需要在8GB以上，**并且两种方式均会使u盘现有数据清空，请注意备份数据**。
-
-刷入u盘：推荐使用[balenaEtcher](https://etcher.balena.io/)刷写，安装好软件之后按照软件说明刷写即可;
-
-![img](https://ztyou.cn/upload/image-eRZv.png)
-
-balenaEtcher官网
-
-ventoy启动：前往[vontoy下载界面](https://www.ventoy.net/cn/download.html)下载，下载后按照官方文档走即可（ventoy启动个人认为更为友好，特别是有多个镜像文件但是只有一个u盘的时候，可以避免多次制作启动盘）。
-
-![img](https://ztyou.cn/upload/image-hMcq.png)
-
-ventoy下载页面
-
-#### 3、安装系统
-
-##### 1.启动启动盘
-
-先去网上搜索你电脑型号对应的进入bios的方式，对于大部分电脑一般是F1,F2或F8。然后插上u盘，重启你的电脑；在看到电脑亮的时候疯狂点按进入bios的按键，进入后到boot选项选取usb启动，如果不会请自行百度或豆包；
-
-##### 2.正式安装
-
-进入ubuntu的启动盘之后，可以先下滑把language换成中文，然后就可以无脑下一步安装了；期间可能会叫你创建账户，设置时区等等，这些操作比较简单，思考一下应该都会。最重要的是关于磁盘的分区和设置（***这可能会损坏你原有的数据，注意备份！！！\***）：
-
-Ubuntu默认的是和windows系统共存，即双系统，选择和windows共存即可；
-
-![img](https://ztyou.cn/upload/Pasted%20image%20(2).png)
-
-还有一种是全盘安装，如果你只有一块硬盘这会删除你的windows系统并且格式化所有数据（假如你还有一块空硬盘的话可以安装到空硬盘上面）；
-
-![img](https://ztyou.cn/upload/Pasted%20image%20(4).png)
-
-以上两种安装方式ubuntu会给你自动完成，几乎不需要操作，还有一种方式是手动分区，这种方式比较高级且容易损失数据，请百度后再操作；
-
-给linux系统分区的大小不需要太大，一般安装后占用可能在10GB或以内，请自行决定需要多少空间。安装快的话会在大概15分钟以内结束，它会提醒你重启，重启后即可使用。（Debian的安装过程类似，但是一些过程却更加复杂，可以自行百度）
-
-## 二、系统使用与优化
-
-由于我使用的是Debian,接下来以Debian演示，ubuntu基本操作相同。
-
-### 1、软件安装
-
-一般来说下载的架构为X86_64,下载后的安装包一般带有xxxxx-xxx-amd64等字样.
-
-Debian类Linux安装软件命令为:
-
-
-
-```
-sudo dpkg -i xxxxxxx-xxxxxxx-xxxxx.deb
+```bash
+php tools/make-password.php '你的新密码'
 ```
 
+它会输出一串 bcrypt 哈希。别用 `sha256sum` 自己算 —— sha256 快到可以拿显卡暴力破解。
 
+**第二步，写配置。**
 
-#### 1.安装浏览器
+把 `config.example.php` 复制成 `config.php`，填上刚才那串哈希：
 
-推荐使用GoogleChrome浏览器,个人认为比自带的FireFox更好用
-
-从[Google浏览器官网](https://www.google.cn/intl/zh-CN/chrome/)下载,下载后应该为google-chrome-xxxxx.deb
-
-
-
-```
-sudo dpkg -i google-chrome-xxxxxx.deb
+```php
+<?php
+$EXPECTED_HASH = '$2y$12$....';
 ```
 
+这个文件已经在 `.gitignore` 里，不会被提交。忘了配也没关系 ——
+登录页会明确提示「服务端还没配置密钥指纹」，不会静默放行。
 
+**第三步，配 Web 服务器。**
 
-#### 2.安装QQ,微信等社交软件
+```nginx
+location ^~ /blogs/    { deny all; }
+location ^~ /comments/ { deny all; }
+location = /config.php { deny all; }
 
-从[QQ官网](https://im.qq.com/linuxqq/index.shtml)/[微信官网](https://linux.weixin.qq.com/)下载Linux安装包,然后同理安装:
-
-
-
-```
-sudo dpkg -i QQ-xxxxxxx.deb
-sudo dpkg -i WeChatLinux-xxx.deb
-```
-
-
-
-#### 3.安装音乐软件
-
-从[QQ音乐官网](https://y.qq.com/download/download.html)下载安装包,同理安装:
-
-
-
-```
-sudo dpkg -i qqmusic-xxxxxxx.deb
+location ~ \.php$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/run/php/php8.5-fpm.sock;
+}
 ```
 
+然后 `nginx -t && systemctl reload nginx`，给 `blogs/`、`comments/`、`src/images/`
+写权限，打开首页，点**页脚的头像**就能进登录页 —— 那个入口不在导航里。
 
+## 为什么 `blogs/` 一定要挡住
 
-由于Kugou音乐没有Linux版本,可以使用MoeKoeMusic(Github:https://github.com/MoeKoeMusic/MoeKoeMusic),一位大佬开发的一款开源简洁高颜值的酷狗第三方客户端,安装同理:
+因为里面是"数据库"。只要能直接下载 `default.md`，
+回收站里的文章、还没发布的草稿就全暴露了。
+页面数据一律走 `api.php` 按需返回，只给该看的那部分。
 
+---POST---
 
+# 写文章：格式、标签，以及"删除其实是打标记"
+<!-- DATE: 2026-10-05 | TAG: 教程, Markdown -->
 
-```
-sudo dpkg -i MoeKoe_Music_v1.5.1_amd64.deb
-```
+## 一篇文章长这样
 
+```markdown
+# 文章标题
+<!-- DATE: 2026-10-05 | TAG: 教程, Markdown -->
 
+正文……
 
-如果安装过后MoeKoeMusic打不开的话,一直闪退,请编辑/usr/share/applications/moekoemusic.desktop :
+<分隔符>
 
-
-
-```
-sudo apt install vim  \\如果你没有安装过vim的话
-sudo vim /usr/share/applications/moekoemusic.desktop
-```
-
-
-
-在Exec=".............." %U后面加上 --no-sandbox,如下所示
-
-
-
-```
-[Desktop Entry]
-Name=MoeKoe Music
-Exec="/opt/MoeKoe Music/moekoemusic" %U --no-sandbox
-Terminal=false
-Type=Application
-Icon=moekoemusic
-StartupWMClass=MoeKoe Music
-Comment=MoeKoe Music
-MimeType=x-scheme-handler/moekoe;
-Categories=Utility;
+# 下一篇
+<!-- DATE: 2026-10-01 | TAG: 随笔 -->
 ```
 
+标题写在 `#` 上，日期和标签写在那行 HTML 注释里，多个标签用逗号分开。
+文章之间用**一行分隔符**隔开 —— 把上面那行 `<分隔符>` 换成
+「三个连字符 + POST + 三个连字符」就是真的分隔符了。
 
+> ⚠️ 分隔符是**朴素切割**的：文章正文里**不能再出现这串字符**，
+> 出现了就会把一篇切成两篇（连代码块里也不行）。
+> 所以在这里只能像上面那样拆开描述 —— 反斜杠转义在 Markdown 里不管用。
 
-如果其他应用闪退则以相同方式添加即可.
+## 在后台写
 
-#### 4.安装视频软件
+进控制台之后是左右两栏：左边写 Markdown，右边实时预览。
+工具栏能插标题、加粗、列表、代码块、表格；
+**截图之后直接在编辑器里 `Ctrl+V`**，图片会自动上传并转成图片语法。
 
-这里推荐安装bilibili,但是bilibili官方也没有Linux版本的客户端,所以这里也推荐Github上大佬的bilibili-linux(Github:https://github.com/msojocs/bilibili-linux),功能完善,还有一些bilibili原版客户端没有的功能,安装同理:
+常用快捷键：
 
+| 快捷键 | 作用 |
+| --- | --- |
+| `Ctrl + B` | 加粗 |
+| `Ctrl + I` | 斜体 |
+| `Ctrl + K` | 插入链接 |
+| `Ctrl + S` | 保存并发布 |
 
+## 删除是「打标记」，不是真删
 
+点删除时，PHP 不会把文章从 `default.md` 里拿掉，只是在日期下面插一行：
+
+```markdown
+<!-- DELETED: 2026-10-05 14:22:01 -->
 ```
-sudo dpkg -i io.github.msojocs.bilibili_xxxxxx_amd64.deb
+
+前台会跳过带这个标记的块。这么做有两个好处：
+
+1. **原文永远还在** —— 就算程序坏了，用记事本就能救回来；
+2. **链接不会失效** —— 文章 `id` 是它在文件里的原始块下标，
+   删掉第 3 篇不会让第 4 篇之后集体改号。
+
+想真正删掉，在回收站里点「彻底删除」。那一步会让后面的文章改号，界面会提醒你。
+
+---POST---
+
+# 评论是怎么存、怎么防灌水的
+<!-- DATE: 2026-10-02 | TAG: 教程, 评论 -->
+
+评论也是文件存的：一篇文章一个 JSON，放在 `comments/` 里，
+和 `blogs/` 一样被 Nginx 挡在外面。**不依赖任何第三方评论服务。**
+
+## 默认先审后发
+
+新评论进「待审核」，你在控制台的**「评论」**页签里点「通过」才会显示出来。
+那里还能「撤下」和「删除」（删主评论会连回复一起删）。
+
+想改成发出来立刻可见：
+
+```php
+// config.php
+$COMMENT_MODERATE = false;
 ```
 
+## 三层防灌水，访客什么都不用做
 
+| 层 | 做法 |
+| --- | --- |
+| 蜜罐 | 表单里藏一个屏幕外的输入框，真人看不见、机器人爱填 |
+| 停留时间 | 提交时带上"打开页面到现在过了多久"，不足 3 秒的当脚本 |
+| 限流 | 按 IP：两条之间至少 20 秒，10 分钟内最多 8 条 |
 
-未完待续........
+命中前两层**不给任何反馈** —— 照常回成功，只是标成垃圾、不在页面上显示，
+站长在后台照样看得到。这样机器人拿不到"我被识破了"的线索。
+
+## 关于安全
+
+评论、昵称、网址**全部用 `textContent` 渲染**，前端没有任何一处把用户输入拼成 HTML。
+所以 `<script>alert(1)</script>` 这种只会原样显示出来，不会执行。
+
+站点自己的 cookie 里也没有密码：密码只在登录那一次请求里发出去，
+换回一个随机会话 id，浏览器里存的是那个 id。
+
+---POST---
+
+# 界面与性能：主题、玻璃和桌面看板娘
+<!-- DATE: 2026-09-28 | TAG: 折腾, 性能 -->
+
+## 白天黑夜是"擦"出来的
+
+切换主题时不是硬切，而是用 View Transitions 从按钮位置向外扩散一个圆：
+白天 → 黑夜是扩散铺满，黑夜 → 白天是缩回按钮里，像被吸进去。
+
+没开这个能力的浏览器就直接切，交给 CSS 过渡去平滑。
+系统开了「减少动态效果」的话，所有动画都会让路。
+
+## 玻璃是真的"透"
+
+卡片用的是 `backdrop-filter`，而且带一点折射 —— 所以背后得有东西可透。
+背景那层极光和方格本就是干这个的；顺手把整个站的色调从"近白"改成了偏粉，
+不然浅色模式下方格会显得很跳。
+
+## 看板娘
+
+桌面端左下角有个 Live2D 看板娘，**默认关闭**：不点那个 🐾 按钮，
+一个字节都不会下载。手机上不是"隐藏"，是压根不去取那些文件。
+
+它是持续 60fps 的 WebGL 渲染，开着大约占 15 个百分点的 GPU，
+关掉就回到个位数 —— 所以默认不开。
+
+> 收起之后会记住选择，下次只留一个小按钮。
+
+## 终端雨彩蛋
+
+在页面上敲 `rain`，会下一场代码字形的雨，再敲一次切换强度。
+它默认是关的：那东西要不停重绘，开着挺费电。

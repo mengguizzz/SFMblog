@@ -1,5 +1,5 @@
 /* ============================================================================
-   梦归の小站 · 前端逻辑
+   SFMblog · 前端逻辑
    单文件 Markdown 数据库 (blogs/default.md) 的读取、渲染与交互。
    文章块以 `---POST---` 分隔；块的序号（跳过空块后）即为文章 id，
    与 api.php 中的编辑 / 删除索引保持一致。
@@ -632,7 +632,7 @@
         var post = fetched.post;
         var posts = await getAllPosts();
 
-        document.title = post.title + ' · 梦归の小站';
+        document.title = post.title + ' · SFMblog';
         var desc = document.querySelector('meta[name="description"]');
         if (desc && post.summary) desc.setAttribute('content', post.summary);
 
