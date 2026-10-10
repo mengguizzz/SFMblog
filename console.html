@@ -2,242 +2,477 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>终端控制台 - 梦归の小站</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>控制台 · 梦归の小站</title>
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" href="./src/webpic-head.png" type="image/png">
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
-    
-    <style>
-        body { margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #0f172a; color: #e2e8f0; }
-        .console-header {
-            display: flex; gap: 15px; padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            align-items: center;
-        }
-        .console-header input {
-            background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white; padding: 8px 15px; border-radius: 8px; font-size: 1rem; outline: none;
-        }
-        .console-header input:focus { border-color: #db2777; }
-        .input-title { flex: 2; }
-        .input-date, .input-tag { flex: 1; }
-        
-        .btn-publish {
-            background: linear-gradient(135deg, #db2777, #7c3aed); border: none;
-            color: white; padding: 8px 25px; border-radius: 8px; font-weight: bold;
-            cursor: pointer; transition: transform 0.2s;
-        }
-        .btn-publish:hover { transform: scale(1.05); }
-
-        .btn-home {
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: #e2e8f0;
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            font-size: 0.95rem;
-        }
-        .btn-home:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.8);
-            color: #fff;
-        }
-
-        .workspace { display: flex; flex: 1; overflow: hidden; }
-        
-        .editor-container { flex: 1; border-right: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column;}
-        .editor-container textarea {
-            flex: 1; width: 100%; background: #1e293b; color: #e2e8f0; border: none;
-            padding: 20px; font-size: 1.1rem; font-family: monospace; line-height: 1.6;
-            resize: none; outline: none;
-        }
-
-        .preview-container {
-            flex: 1; padding: 20px 40px; background: #0f172a; overflow-y: auto;
-        }
-    </style>
-</head>
-<body class="dark-mode"> 
-    <header class="console-header">
-        <div style="font-weight: 800; color: #db2777; margin-right: 20px;">>_ Console</div>
-        <input type="text" id="post-title" class="input-title" placeholder="文章标题">
-        <input type="date" id="post-date" class="input-date">
-        <input type="text" id="post-tag" class="input-tag" placeholder="标签 (如: Linux)">
-        <a href="index.html" class="btn-home" title="返回主页">🏠 返回首页</a>
-        
-        <button id="btn-publish" class="btn-publish">发 布</button>
-    </header>
-    <main class="workspace">
-        <div class="editor-container">
-            <textarea id="markdown-input" placeholder="开始用 Markdown 编写你的文章..."></textarea>
-        </div>
-        
-        <div class="preview-container">
-            <div id="markdown-preview" class="markdown-body"></div>
-        </div>
-    </main>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-    const inputArea = document.getElementById('markdown-input');
-    const previewArea = document.getElementById('markdown-preview');
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const editId = urlParams.get('edit_id');
-    const isEditMode = editId !== null;
+        document.documentElement.dataset.theme = 'dark';
+    </script>
+</head>
+<body class="console-body">
 
-    if (isEditMode) {
-        document.querySelector('.console-header div').innerText = '>_ Console (Edit Mode)';
-        try {
-            const response = await fetch('./blogs/default.md');
-            const fullText = await response.text();
-            const rawPosts = fullText.split('---POST---');
-            
-            if (rawPosts[editId]) {
-                const text = rawPosts[editId];
-                const titleMatch = text.match(/^#\s+(.+)/m);
-                const metaMatch = text.match(/<!--\s*DATE:\s*(.*?)\s*\|\s*TAG:\s*(.*?)\s*-->/);
-                
-                document.getElementById('post-title').value = titleMatch ? titleMatch[1] : '';
-                document.getElementById('post-date').value = metaMatch ? metaMatch[1] : '';
-                document.getElementById('post-tag').value = metaMatch ? metaMatch[2] : '';
-                
-                const content = text.replace(/^#\s+(.+)/m, '').replace(/<!--.*?-->/s, '').trim();
-                inputArea.value = content;
-                previewArea.innerHTML = marked.parse(content);
-            }
-        } catch(e) { console.error("读取原文失败", e); }
-    } else {
-        document.getElementById('post-date').value = new Date().toISOString().split('T')[0];
+<header class="console-top">
+    <div class="console-logo"><i></i>&gt;_ Console</div>
+
+    <button class="cbtn" id="btn-drawer" type="button" title="打开文章列表">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        文章
+    </button>
+
+    <input type="text" id="post-title" class="fld-title" placeholder="文章标题">
+    <input type="date" id="post-date" class="fld-date">
+    <input type="text" id="post-tag" class="fld-tag" placeholder="标签（逗号分隔，如：Linux, 服务器）">
+
+    <div class="console-spacer"></div>
+
+    <button class="cbtn" id="btn-reset" type="button" title="清空并新建一篇">新建</button>
+    <button class="cbtn" id="btn-delete" type="button" title="删除当前文章" hidden>删除</button>
+    <a href="index.html" class="cbtn" title="返回首页">首页</a>
+    <button class="cbtn cbtn-primary" id="btn-publish" type="button">发 布</button>
+</header>
+
+<div class="console-bar">
+    <button class="tool" type="button" data-md="h2" title="二级标题">H2</button>
+    <button class="tool" type="button" data-md="h3" title="三级标题">H3</button>
+    <span class="tool-sep"></span>
+    <button class="tool" type="button" data-md="bold" title="加粗 (Ctrl+B)"><b>B</b></button>
+    <button class="tool" type="button" data-md="italic" title="斜体 (Ctrl+I)"><i>I</i></button>
+    <button class="tool" type="button" data-md="strike" title="删除线"><s>S</s></button>
+    <button class="tool" type="button" data-md="code" title="行内代码">&lt;/&gt;</button>
+    <span class="tool-sep"></span>
+    <button class="tool" type="button" data-md="ul" title="无序列表">•</button>
+    <button class="tool" type="button" data-md="ol" title="有序列表">1.</button>
+    <button class="tool" type="button" data-md="quote" title="引用">❝</button>
+    <span class="tool-sep"></span>
+    <button class="tool" type="button" data-md="link" title="链接 (Ctrl+K)">🔗</button>
+    <button class="tool" type="button" data-md="codeblock" title="代码块">{ }</button>
+    <button class="tool" type="button" data-md="table" title="表格">▦</button>
+    <button class="tool" type="button" data-md="hr" title="分割线">—</button>
+    <span class="tool-sep"></span>
+    <button class="tool" type="button" id="btn-image" title="插入图片（也可直接 Ctrl+V 粘贴）">🖼</button>
+    <input type="file" id="file-input" accept="image/*" hidden>
+
+    <div class="console-stats">
+        <span id="stat-words">0 字</span>
+        <span id="stat-lines">0 行</span>
+        <span id="stat-state">已同步</span>
+    </div>
+</div>
+
+<main class="console-main">
+    <section class="pane pane-editor">
+        <div class="pane-head">Markdown</div>
+        <textarea id="markdown-input" spellcheck="false" placeholder="开始用 Markdown 编写你的文章…&#10;&#10;提示：截图后直接 Ctrl + V 就能自动上传成图片链接。"></textarea>
+    </section>
+    <section class="pane pane-preview">
+        <div class="pane-head">Preview</div>
+        <div class="preview-scroll">
+            <div id="markdown-preview" class="prose"></div>
+        </div>
+    </section>
+</main>
+
+<aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+        <span>Articles</span>
+        <button class="tool" id="btn-drawer-close" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="drawer-list" id="drawer-list"></div>
+</aside>
+<div class="scrim" id="scrim"></div>
+
+<div class="toast-stack" id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="./js/blog.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var input = $('markdown-input');
+    var preview = $('markdown-preview');
+    var titleEl = $('post-title');
+    var dateEl = $('post-date');
+    var tagEl = $('post-tag');
+    var publishBtn = $('btn-publish');
+    var deleteBtn = $('btn-delete');
+
+    var params = new URLSearchParams(location.search);
+    var editId = params.get('edit_id');
+    var isEdit = editId !== null;
+    var dirty = false;
+    var posts = [];
+
+    /* ---------------- toast ---------------- */
+    function toast(text, kind) {
+        var el = document.createElement('div');
+        el.className = 'toast ' + (kind || '');
+        el.innerHTML = '<span class="bar"></span><span></span>';
+        el.lastChild.textContent = text;
+        $('toasts').appendChild(el);
+        setTimeout(function () {
+            el.classList.add('is-out');
+            setTimeout(function () { el.remove(); }, 320);
+        }, 2600);
     }
 
-    function insertAtCursor(textarea, textToInsert) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        textarea.value = textarea.value.substring(0, start) + textToInsert + textarea.value.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
-        textarea.dispatchEvent(new Event('input'));
-    }
-    async function uploadImage(file) {
-        const token = sessionStorage.getItem('admin_token');
-        if (!token) {
-            alert("图床错误：未检测到密码授权，请重新登录！");
-            return null;
-        }
-
-        const formData = new FormData();
-        formData.append('token', token);
-        formData.append('action', 'upload');
-        formData.append('image', file);
-
-        try {
-            const response = await fetch('./api.php', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
-            if (response.ok && result.url) {
-                return result.url;
-            } else {
-                console.error("上传失败:", result.error);
-                return null;
-            }
-        } catch (error) {
-            console.error("网络错误:", error);
-            return null;
-        }
+    /* ---------------- markdown ---------------- */
+    if (window.marked) {
+        marked.setOptions({ breaks: true, gfm: true });
     }
 
-    inputArea.addEventListener('paste', async (e) => {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-        for (let item of items) {
-            if (item.kind === 'file' && item.type.startsWith('image/')) {
-                e.preventDefault(); 
-                
-                const file = item.getAsFile();
-                const placeholder = `\n![上传中...请稍候]()\n`;
-                insertAtCursor(inputArea, placeholder);
-                const imgUrl = await uploadImage(file);
-                
-                if (imgUrl) {
-                    const markdownImg = `\n![image](${imgUrl})\n`;
-                    inputArea.value = inputArea.value.replace(placeholder, markdownImg);
-                    inputArea.dispatchEvent(new Event('input'));
-                } else {
-                    inputArea.value = inputArea.value.replace(placeholder, `\n> ❌ 图片上传失败\n`);
-                    inputArea.dispatchEvent(new Event('input'));
-                    alert('图片上传失败，请检查密钥或服务端权限！');
-                }
-                break;
-            }
-        }
-    });
-    inputArea.addEventListener('input', () => {
-        previewArea.innerHTML = marked.parse(inputArea.value);
-        document.querySelectorAll('#markdown-preview pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
-    });
-    document.getElementById('btn-publish').addEventListener('click', async () => {
-        const title = document.getElementById('post-title').value;
-        const date = document.getElementById('post-date').value;
-        const tag = document.getElementById('post-tag').value;
-        const content = document.getElementById('markdown-input').value;
-
-        if (!title || !content) { alert('标题和内容不能为空！'); return; }
-
-        const token = sessionStorage.getItem('admin_token');
-        if (!token) {
-            alert('授权丢失，请重新登录！');
-            window.location.href = 'login.html';
+    function render() {
+        if (!input.value.trim()) {
+            preview.innerHTML = '<div class="preview-empty"><span><b>预览会实时显示在这里</b>在左侧写下 Markdown，右边同步看效果。</span></div>';
             return;
         }
-        const rawContent = `# ${title}\n<!-- DATE: ${date} | TAG: ${tag} -->\n\n${content}`;
-        
-        const btn = document.getElementById('btn-publish');
-        btn.innerText = '提交中...';
-        btn.disabled = true;
+        if (!window.marked) { preview.textContent = input.value; return; }
+        preview.innerHTML = marked.parse(input.value || '');
+        preview.querySelectorAll('pre code').forEach(function (b) {
+            if (window.hljs) { try { hljs.highlightElement(b); } catch (e) { } }
+        });
+        preview.querySelectorAll('img').forEach(function (img) { img.loading = 'lazy'; });
+    }
 
+    function updateStats() {
+        var v = input.value;
+        var chars = v.replace(/\s/g, '').length;
+        $('stat-words').textContent = chars + ' 字';
+        $('stat-lines').textContent = (v ? v.split('\n').length : 0) + ' 行';
+        $('stat-state').textContent = dirty ? '未保存' : '已同步';
+        $('stat-state').style.color = dirty ? '#fbbf24' : 'rgba(255,255,255,.66)';
+    }
+
+    function markDirty() {
+        dirty = true;
+        updateStats();
+        saveDraft();
+    }
+
+    /* ---------------- editing helpers ---------------- */
+    function replaceRange(start, end, text, selStart, selEnd) {
+        input.value = input.value.slice(0, start) + text + input.value.slice(end);
+        input.selectionStart = selStart === undefined ? start + text.length : selStart;
+        input.selectionEnd = selEnd === undefined ? input.selectionStart : selEnd;
+        input.focus();
+        onInput();
+    }
+
+    function wrap(before, after, placeholder) {
+        var s = input.selectionStart, e = input.selectionEnd;
+        var sel = input.value.slice(s, e) || placeholder || '';
+        replaceRange(s, e, before + sel + after, s + before.length, s + before.length + sel.length);
+    }
+
+    function prefixLines(prefix, ordered) {
+        var s = input.selectionStart, e = input.selectionEnd;
+        var startLine = input.value.lastIndexOf('\n', s - 1) + 1;
+        var endLine = input.value.indexOf('\n', e);
+        if (endLine === -1) endLine = input.value.length;
+        var block = input.value.slice(startLine, endLine);
+        var out = block.split('\n').map(function (line, i) {
+            return prefix + (ordered ? (i + 1) + '. ' : '') + line.replace(/^(\s*)([-*+]|\d+\.)\s+/, '$1');
+        }).join('\n');
+        replaceRange(startLine, endLine, out, startLine, startLine + out.length);
+    }
+
+    function insertBlock(text) {
+        var s = input.selectionStart;
+        var needNL = s > 0 && input.value.slice(0, s).slice(-2) !== '\n\n';
+        var prefix = input.value.slice(0, s) === '' ? '' : (needNL ? '\n\n' : '\n');
+        replaceRange(s, input.selectionEnd, prefix + text + '\n');
+    }
+
+    var ACTIONS = {
+        h2: function () { prefixLines('## '); },
+        h3: function () { prefixLines('### '); },
+        bold: function () { wrap('**', '**', '加粗文字'); },
+        italic: function () { wrap('*', '*', '斜体文字'); },
+        strike: function () { wrap('~~', '~~', '删除线'); },
+        code: function () { wrap('`', '`', 'code'); },
+        link: function () {
+            var s = input.selectionStart, e = input.selectionEnd;
+            var sel = input.value.slice(s, e) || '链接文字';
+            replaceRange(s, e, '[' + sel + '](https://)', s + 1, s + 1 + sel.length);
+        },
+        codeblock: function () { insertBlock('```cpp\n' + (input.value.slice(input.selectionStart, input.selectionEnd) || '// 你的代码') + '\n```'); },
+        ul: function () { prefixLines('- '); },
+        ol: function () { prefixLines('', true); },
+        quote: function () { prefixLines('> '); },
+        hr: function () { insertBlock('---'); },
+        table: function () { insertBlock('| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |'); }
+    };
+
+    document.querySelectorAll('[data-md]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var fn = ACTIONS[btn.dataset.md];
+            if (fn) { fn(); }
+        });
+    });
+
+    /* ---------------- input ---------------- */
+    function onInput() {
+        render();
+        updateStats();
+    }
+
+    input.addEventListener('input', function () {
+        dirty = true;
+        onInput();
+        saveDraft();
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        var k = e.key.toLowerCase();
+        if (k === 'b') { e.preventDefault(); ACTIONS.bold(); }
+        else if (k === 'i') { e.preventDefault(); ACTIONS.italic(); }
+        else if (k === 'k') { e.preventDefault(); ACTIONS.link(); }
+        else if (k === 's') { e.preventDefault(); publish(); }
+    });
+
+    // Tab 插入缩进
+    input.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') return;
+        e.preventDefault();
+        var s = input.selectionStart, en = input.selectionEnd;
+        replaceRange(s, en, '    ');
+    });
+
+    /* ---------------- draft ---------------- */
+    var DRAFT_KEY = 'sfmb_draft_v2';
+    var draftTimer = null;
+
+    function saveDraft() {
+        clearTimeout(draftTimer);
+        draftTimer = setTimeout(function () {
+            try {
+                localStorage.setItem(DRAFT_KEY, JSON.stringify({
+                    t: titleEl.value, d: dateEl.value, g: tagEl.value,
+                    c: input.value, id: editId, at: Date.now()
+                }));
+            } catch (e) { }
+        }, 800);
+    }
+
+    function clearDraft() {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { }
+    }
+
+    function restoreDraft() {
+        var raw;
+        try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) { return false; }
+        if (!raw) return false;
+        var d;
+        try { d = JSON.parse(raw); } catch (e) { return false; }
+        if (!d || d.id !== editId || !d.c) return false;
+        titleEl.value = d.t || '';
+        dateEl.value = d.d || '';
+        tagEl.value = d.g || '';
+        input.value = d.c;
+        toast('已恢复上次未发布的内容');
+        return true;
+    }
+
+    /* ---------------- image upload ---------------- */
+    async function uploadImage(file) {
+        var token = sessionStorage.getItem('admin_token');
+        if (!token) { toast('未检测到授权，请重新登录', 'err'); return null; }
+        var fd = new FormData();
+        fd.append('token', token);
+        fd.append('action', 'upload');
+        fd.append('image', file);
         try {
-            const formData = new FormData();
-            formData.append('token', token);
-            formData.append('content', rawContent);
-            if (isEditMode) {
-                formData.append('action', 'edit');
-                formData.append('id', editId);
-            } else {
-                formData.append('action', 'add');
-            }
+            var res = await fetch('./api.php', { method: 'POST', body: fd });
+            var data = await res.json();
+            if (res.ok && data.url) return data.url;
+            toast(data.error || '图片上传失败', 'err');
+        } catch (e) {
+            toast('网络错误，图片上传失败', 'err');
+        }
+        return null;
+    }
 
-            const response = await fetch('./api.php', { method: 'POST', body: formData });
-
-            if (response.ok) {
-                alert(isEditMode ? '修改成功！已覆盖原文。' : '发布成功！');
-                if (isEditMode) {
-                    window.location.href = `post.html?id=${editId}`; // 修改完跳回文章页
-                } else {
-                    window.location.reload(); // 新增完清空重置
-                }
-            } else {
-                alert('操作失败，请检查密钥权限。');
+    input.addEventListener('paste', async function (e) {
+        var items = (e.clipboardData || {}).items || [];
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            if (it.kind === 'file' && it.type.indexOf('image/') === 0) {
+                e.preventDefault();
+                var file = it.getAsFile();
+                var ph = '\n![上传中…]()\n';
+                insertBlock(ph.trim());
+                var url = await uploadImage(file);
+                input.value = input.value.replace(ph.trim(), url ? '![image](' + url + ')' : '> ❌ 图片上传失败');
+                onInput(); markDirty();
+                if (url) toast('图片已上传', 'ok');
+                return;
             }
-        } catch (error) {
-            alert('网络错误！');
-        } finally {
-            btn.innerText = '发 布';
-            btn.disabled = false;
         }
     });
-});
-    </script>
+
+    $('btn-image').addEventListener('click', function () { $('file-input').click(); });
+    $('file-input').addEventListener('change', async function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var url = await uploadImage(file);
+        if (url) { insertBlock('![image](' + url + ')'); markDirty(); toast('图片已上传', 'ok'); }
+        this.value = '';
+    });
+
+    /* ---------------- drawer ---------------- */
+    function openDrawer() {
+        $('drawer').classList.add('is-open');
+        $('drawer').setAttribute('aria-hidden', 'false');
+        $('scrim').classList.add('is-on');
+    }
+    function closeDrawer() {
+        $('drawer').classList.remove('is-open');
+        $('drawer').setAttribute('aria-hidden', 'true');
+        $('scrim').classList.remove('is-on');
+    }
+    $('btn-drawer').addEventListener('click', async function () {
+        await loadList();
+        openDrawer();
+    });
+    $('btn-drawer-close').addEventListener('click', closeDrawer);
+    $('scrim').addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
+
+    async function loadList() {
+        var list = $('drawer-list');
+        list.innerHTML = '';
+        posts = await getAllPosts();
+        if (!posts.length) {
+            list.innerHTML = '<p style="padding:16px;color:rgba(255,255,255,.4);font-size:.9rem">还没有任何文章。</p>';
+            return;
+        }
+        posts.forEach(function (p) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'drawer-item' + (String(p.id) === String(editId) ? ' is-current' : '');
+            b.innerHTML = '<span class="idx"></span><span class="nm"></span><span class="dt"></span>';
+            b.children[0].textContent = '#' + p.id;
+            b.children[1].textContent = p.title;
+            b.children[2].textContent = p.date;
+            b.addEventListener('click', function () {
+                if (dirty && !confirm('当前修改还没保存，确定切换吗？')) return;
+                location.href = 'console.html?edit_id=' + p.id;
+            });
+            list.appendChild(b);
+        });
+    }
+
+    /* ---------------- publish / delete ---------------- */
+    async function publish() {
+        var title = titleEl.value.trim();
+        var date = dateEl.value;
+        var tag = tagEl.value.trim();
+        var content = input.value;
+
+        if (!title || !content.trim()) { toast('标题和内容不能为空', 'err'); return; }
+        if (!date) { date = new Date().toISOString().slice(0, 10); dateEl.value = date; }
+
+        var token = sessionStorage.getItem('admin_token');
+        if (!token) { toast('授权已失效，请重新登录', 'err'); setTimeout(function () { location.href = 'login.html'; }, 900); return; }
+
+        var raw = '# ' + title + '\n<!-- DATE: ' + date + ' | TAG: ' + (tag || 'Blog') + ' -->\n\n' + content.trim();
+        var fd = new FormData();
+        fd.append('token', token);
+        fd.append('content', raw);
+        fd.append('action', isEdit ? 'edit' : 'add');
+        if (isEdit) fd.append('id', editId);
+
+        publishBtn.disabled = true;
+        publishBtn.textContent = '提交中…';
+
+        try {
+            var res = await fetch('./api.php', { method: 'POST', body: fd });
+            var data = await res.json().catch(function () { return {}; });
+            if (res.ok && data.success) {
+                dirty = false;
+                clearDraft();
+                toast(isEdit ? '已保存修改' : '发布成功', 'ok');
+                setTimeout(function () {
+                    location.href = isEdit ? 'post.html?id=' + editId : 'index.html';
+                }, 700);
+                return;
+            }
+            toast(data.error || '操作失败，请检查密钥权限', 'err');
+        } catch (e) {
+            toast('网络错误，提交失败', 'err');
+        }
+
+        publishBtn.disabled = false;
+        publishBtn.textContent = '发 布';
+    }
+
+    publishBtn.addEventListener('click', publish);
+
+    deleteBtn.addEventListener('click', async function () {
+        if (!confirm('删除后无法恢复，确定要删除这篇文章吗？')) return;
+        var token = sessionStorage.getItem('admin_token');
+        if (!token) { toast('授权已失效', 'err'); return; }
+        var fd = new FormData();
+        fd.append('token', token);
+        fd.append('action', 'delete');
+        fd.append('id', editId);
+        try {
+            var res = await fetch('./api.php', { method: 'POST', body: fd });
+            var data = await res.json().catch(function () { return {}; });
+            if (res.ok && data.success) {
+                dirty = false;
+                clearDraft();
+                toast('已删除', 'ok');
+                setTimeout(function () { location.href = 'index.html'; }, 600);
+            } else {
+                toast(data.error || '删除失败', 'err');
+            }
+        } catch (e) { toast('网络错误', 'err'); }
+    });
+
+    $('btn-reset').addEventListener('click', function () {
+        if (dirty && !confirm('当前修改还没保存，确定新建吗？')) return;
+        location.href = 'console.html';
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+        if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    /* ---------------- boot ---------------- */
+    (async function boot() {
+        if (!sessionStorage.getItem('admin_token')) {
+            location.replace('login.html');
+            return;
+        }
+
+        if (isEdit) {
+            var all = await getAllPosts();
+            var post = all.find(function (p) { return String(p.id) === String(editId); });
+            if (!post) { toast('找不到这篇文章', 'err'); return; }
+            document.title = '编辑 · ' + post.title;
+            titleEl.value = post.title;
+            dateEl.value = post.date;
+            tagEl.value = post.tags.join(', ');
+            input.value = post.body;
+            deleteBtn.hidden = false;
+        } else {
+            dateEl.value = new Date().toISOString().slice(0, 10);
+            document.title = '新建文章 · 控制台';
+        }
+
+        var restored = restoreDraft();
+        render();
+        dirty = !!restored;
+        updateStats();
+    })();
+})();
+</script>
 </body>
 </html>

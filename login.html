@@ -2,152 +2,110 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>后台授权 - 梦归の小站</title>
-    <link rel="stylesheet" href="./css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>后台授权 · 梦归の小站</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#fbf7fc" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#070810" media="(prefers-color-scheme: dark)">
     <link rel="icon" href="./src/webpic-head.png" type="image/png">
-    <style>
-        body { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            margin: 0;
-            overflow: hidden;
-        }
-
-        .login-card {
-            padding: 40px;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .login-title {
-            font-size: 1.8rem;
-            color: var(--text-primary);
-            margin-bottom: 30px;
-            font-weight: 800;
-            letter-spacing: 2px;
-        }
-
-        .input-group {
-            position: relative;
-            margin-bottom: 25px;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 15px 45px 15px 20px;
-            border: 2px solid var(--glass-border-dark);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            font-size: 1.1rem;
-            color: var(--text-primary);
-            outline: none;
-            transition: all 0.3s ease;
-            box-sizing: border-box;
-        }
-
-        .input-group input:focus {
-            border-color: #db2777;
-            background: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 15px rgba(219, 39, 119, 0.2);
-        }
-
-        .toggle-pwd {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            font-size: 1.2rem;
-            user-select: none;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-
-        .toggle-pwd:hover { opacity: 1; }
-
-        .login-btn {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #db2777, #7c3aed);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 15px rgba(219, 39, 119, 0.4);
-        }
-
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(219, 39, 119, 0.6);
-        }
-    </style>
+    <link rel="stylesheet" href="./css/style.css">
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('theme');
+                if (t !== 'light' && t !== 'dark') {
+                    t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.dataset.theme = t;
+            } catch (e) { }
+        })();
+    </script>
 </head>
-<body>
+<body class="auth-body">
 
-    <div class="login-card liquid-glass" id="login-container">
-        <h2 class="login-title">Console Login</h2>
-        
-        <div class="input-group">
-            <input type="password" id="admin-pwd" placeholder="请输入管理员密钥" autocomplete="off" autofocus>
-            <span class="toggle-pwd" id="toggle-eye" title="显示/隐藏密码">👁️</span>
+<div class="bg" aria-hidden="true">
+    <div class="bg-aurora"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
+    <div class="bg-grid"></div>
+    <div class="bg-noise"></div>
+</div>
+
+<main class="auth-card glass sheen" id="login-container">
+    <div class="auth-badge" style="background-image:url('./src/webpic-head.png')" role="img" aria-label="站点头像"></div>
+    <h1 class="auth-title">Console Login</h1>
+    <p class="auth-sub">&gt; authentication required</p>
+
+    <form id="login-form" autocomplete="off">
+        <div class="field">
+            <label class="sr-only" for="admin-pwd" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">管理员密钥</label>
+            <input type="password" id="admin-pwd" placeholder="请输入管理员密钥" autocomplete="current-password" autofocus required>
+            <button type="button" class="eye" id="toggle-eye" aria-label="显示 / 隐藏密钥">
+                <svg class="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="i-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2"/><path d="M9.4 5.3A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.2 6.2A17 17 0 0 0 2 12s3.5 7 10 7c1 0 1.9-.1 2.7-.3"/></svg>
+            </button>
         </div>
-        
-        <button class="login-btn" id="login-btn">进 入</button>
-    </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const currentTheme = localStorage.getItem('theme');
-            if (currentTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-            }
-        });
-    </script>
+        <button class="btn btn-primary auth-btn" id="login-btn" type="submit">进 入</button>
+        <p class="auth-msg" id="auth-msg" role="status" aria-live="polite"></p>
+    </form>
 
-    <script>
-        const pwdInput = document.getElementById('admin-pwd');
-        const toggleEye = document.getElementById('toggle-eye');
-        const loginBtn = document.getElementById('login-btn');
-        const loginContainer = document.getElementById('login-container');
+    <p class="auth-foot">密钥只保存在本地会话中 · <a href="index.html">返回首页</a></p>
+</main>
 
-        toggleEye.addEventListener('click', () => {
-            if (pwdInput.type === 'password') {
-                pwdInput.type = 'text';
-                toggleEye.innerText = '🙈';
-            } else {
-                pwdInput.type = 'password';
-                toggleEye.innerText = '👁️';
-            }
-        });
+<script>
+    (function () {
+        var input = document.getElementById('admin-pwd');
+        var eye = document.getElementById('toggle-eye');
+        var form = document.getElementById('login-form');
+        var btn = document.getElementById('login-btn');
+        var msg = document.getElementById('auth-msg');
 
-        function doLogin() {
-            const password = pwdInput.value.trim();
-            if (!password) {
-                alert('请输入密钥！');
-                return;
-            }
-            
-            sessionStorage.setItem('admin_token', password);
-            
-            loginContainer.innerHTML = '<h3 style="color: #db2777; margin: 20px 0;">身份确认中，正在跳转...</h3>';
-            setTimeout(() => {
-                window.location.href = 'console.html';
-            }, 600);
+        function say(text, kind) {
+            msg.textContent = text || '';
+            msg.className = 'auth-msg' + (kind ? ' is-' + kind : '');
         }
 
-        loginBtn.addEventListener('click', doLogin);
-        
-        pwdInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                doLogin();
-            }
+        eye.addEventListener('click', function () {
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            eye.querySelector('.i-eye-off').hidden = show;
+            eye.querySelector('.i-eye-on').hidden = !show;
+            input.focus();
         });
-    </script>
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var token = input.value.trim();
+            if (!token) { say('请输入密钥。', 'error'); input.focus(); return; }
+
+            btn.disabled = true;
+            btn.textContent = '验证中…';
+            say('正在与服务器校验…');
+
+            try {
+                var fd = new FormData();
+                fd.append('action', 'verify');
+                fd.append('token', token);
+                var res = await fetch('./api.php', { method: 'POST', body: fd });
+                var data = await res.json().catch(function () { return {}; });
+
+                if (res.ok && data.success) {
+                    sessionStorage.setItem('admin_token', token);
+                    say('身份确认，正在跳转…', 'ok');
+                    setTimeout(function () { window.location.href = 'console.html'; }, 500);
+                    return;
+                }
+
+                say(data.error === 'Server not configured'
+                    ? '服务端还没配置密钥指纹（api.php 里的 $EXPECTED_HASH）。'
+                    : '密钥不正确，请重试。', 'error');
+            } catch (err) {
+                say('无法连接服务器，请检查 PHP 环境是否正常。', 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = '进 入';
+            input.select();
+        });
+    })();
+</script>
 </body>
 </html>
