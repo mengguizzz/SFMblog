@@ -12,12 +12,7 @@
 | `live2dcubismcore.min.js` | [Live2D/CubismWebFramework](https://github.com/Live2D/CubismWebFramework) 的 Cubism 5 核心 |
 | `chunk/index.js` `chunk/index2.js` | 上面两套模型加载器（按体积拆过，方便按需下载） |
 
-## 模型
-
-仓库里自带两个模型，工具条上的「换模型」可以切换，改 `js/blog.js` 里的 `MODEL_ID`
-（0 = 伊蕾娜，1 = Hiyori）可以改默认值。
-
-### `model/Elaina/` —— 伊蕾娜（默认）
+## 模型（`model/Elaina/`）
 
 **《魔女之旅》伊蕾娜**，作者 **MNDIA**，原帖：
 
@@ -39,19 +34,12 @@
 > 角色本身的版权归原作者与出版社，模型是粉丝二创。
 > **本站是非商业的个人博客**，符合作者的配布规则；如果你要拿去商用，得另外找作者授权。
 
-贴图和 Hiyori 一样压过：4096×2048（1.9 MB）→ 1024×512（227 KB），显示尺寸只有 300px，看不出差别。
+贴图也压过：4096×2048（1.9 MB）→ 1024×512（227 KB）——看板娘显示尺寸只有 250px，看不出差别。
 这个模型是 Cubism 5（`.moc3`），没有动作文件，所以它不会自己动，但有物理（头发 / 衣服会晃）和眨眼。
 
-### `model/Hiyori/` —— Live2D 官方示例
-
-**Live2D 官方示例模型 Hiyori**，来自 [Live2D/CubismWebSamples](https://github.com/Live2D/CubismWebSamples)
-（`Samples/Resources/Hiyori`）。
-
-- 依据 [Live2D 免费素材利用许偌](https://www.live2d.com/eula/live2d-free-material-license-agreement_cn.html) 使用
-- 版权归 **Live2D Inc.** 所有
-- `index.json` 就是官方的 `Hiyori.model3.json`（只改了文件名，方便组件按 `model/<名字>/index.json` 取）
-- 贴图从 2048×2048 压到 1024×1024（4.3 MB → 1.1 MB）——看板娘显示尺寸只有 300px，肉眼无差别
-- `textures.cache` 是两字节的空数组占位，组件会请求它，放这儿免得 404
+> 早先默认用的是 Live2D 官方示例模型 Hiyori（`Live2D/CubismWebSamples`，
+> 依据 Live2D 免费素材利用许偌使用）。现在仓库里只留伊蕾娜一个模型，Hiyori 已经删掉了；
+> 想加回来的话，把模型目录放进 `model/` 再改 `model_list.json` 就行。
 
 ## 想换模型
 

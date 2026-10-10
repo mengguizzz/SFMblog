@@ -2118,6 +2118,36 @@ a:hover > .footer-img { transform: rotate(-4deg) scale(1.06); }
 
 /* 看板娘本体：压在正文之上（不然工具条点不到），但别盖住导航和阅读进度条 */
 #waifu { z-index: 120 !important; }
+
+/*
+ * 看板娘的显示尺寸。
+ * waifu.css 里把 #live2d 写死成 300×300，而那张表是 JS 后加载的 —— 同权重时它赢，
+ * 所以这里用两个 id（#waifu #live2d）压过去，改大小只动这一处就行。
+ * 顺手把工具条和对话气泡按比例收一收，不然小模型配大按钮会很怪。
+ */
+#waifu #live2d {
+    width: 250px;
+    height: 250px;
+}
+
+#waifu #waifu-tool {
+    top: 58px;
+    right: -6px;
+    gap: 4px;
+}
+
+#waifu #waifu-tool svg {
+    height: 22px;
+}
+
+#waifu #waifu-tips {
+    width: 210px;
+    margin: -26px 12px;
+    min-height: 62px;
+    font-size: 13px;
+    line-height: 22px;
+}
+
 @media (max-width: 1023px), (hover: none), (pointer: coarse) {
     .pet-btn { display: none; }
 }

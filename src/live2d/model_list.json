@@ -1,10 +1,8 @@
 {
     "models": [
-        "Elaina",
-        "Hiyori"
+        "Elaina"
     ],
     "messages": [
-        "魔女之旅 · 伊蕾娜（模型：MNDIA）",
-        "Live2D 官方示例模型 Hiyori"
+        "魔女之旅 · 伊蕾娜（模型：MNDIA）"
     ]
 }

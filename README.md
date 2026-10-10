@@ -369,7 +369,11 @@ t = 'light';
 
 ### 看板娘（Live2D）
 
-桌面端左下角会有一个 Live2D 看板娘，鼠标悬停能互动、可以拖拽、点工具条换模型 / 换装 / 查看信息 / 收起。
+桌面端左下角会有一个 Live2D 看板娘，鼠标悬停能互动、可以拖拽，
+点工具条可以看**一言** / 关于 / 收起。
+
+显示尺寸 **250px**（库默认是 300px，在 `css/style.css` 里用 `#waifu #live2d` 压小了；
+改这一个值就能整体缩放，工具条和气泡的位置也跟着调好了）。
 
 **只在桌面端加载**：要求 `(hover: hover) and (pointer: fine)` 且视口 ≥1024px。
 手机上不是"隐藏"，而是**一个字节都不下载** —— 连那几百 KB 的脚本和模型都不去取。
@@ -399,25 +403,34 @@ please use @pixi/unsafe-eval module to enable support.
 | oh-my-live2d 0.19.3 | 0 个 | 1 条 unsafe-eval |
 | live2d-widgets 1.0.1 | **800×800 已渲染** | 0 条 |
 
-看板娘的组件和模型**已经全部自托管**（见下面「模型来源」），所以它没有让 CSP 多放行
-任何域名 —— 只有 Markdown 渲染用的 `https://cdn.jsdelivr.net`（marked / highlight.js），
+看板娘的组件和模型**全部自托管**（见下面「模型来源」），所以它本身没让 CSP 多放行任何域名。
+CSP 里额外放行的只有两个：
+
+| 域名 | 用途 |
+| --- | --- |
+| `https://cdn.jsdelivr.net` | Markdown 渲染（marked / highlight.js） |
+| `https://v1.hitokoto.cn` | 「一言」按钮（只有点了才请求，详见下面） |
+
 而且**始终没有放开 `unsafe-eval`**。
 
-#### ⚠️ GPU 代价：约 23 个百分点
+#### ⚠️ GPU 代价：约 15 个百分点
 
 这是加它必须知道的代价 —— Live2D 是持续 60fps 的 WebGL 渲染：
 
 | 状态 | GPU |
 | --- | --- |
-| 看板娘显示中 | 31.0% |
-| 看板娘收起后 | 7.8% |
+| 看板娘显示中 | 20.5% |
+| 看板娘收起后 | 5.8% |
 
 好的一面是**收起它就等于关掉**（显示 `none` 后渲染就停了），而且这个选择会记住。
 所以它是**默认关闭**的：不点那个 🐾 按钮，就一个像素都不渲染。
 
+> 这两个数是用**独立 user-data-dir 启动的 Chrome**、只统计它自己的进程测出来的。
+> 早先按"全部 chrome.exe"汇总的测法在你还开着浏览器时会严重失真（实测能跑到 80%+）。
+
 #### 模型来源
 
-**已经完全自托管**，跑起来不请求任何第三方域名：
+**组件和模型完全自托管**（唯一例外是下面那个一言按钮）：
 
 ```text
 src/live2d/
@@ -430,35 +443,30 @@ src/live2d/
 │       └── index2.js           Cubism 5 模型加载器
 ├── model_list.json             模型清单
 ├── CREDITS.md                  组件 / 模型的来源与授权说明
-├── model/Elaina/               默认模型：《魔女之旅》伊蕾娜（MNDIA 配布，约 0.7 MB）
-│   ├── index.json              （即作者的 LSS.model3.json）
-│   ├── LSS.moc3 / LSS.physics3.json / LSS.cdi3.json
-│   ├── Elaina.1024/            贴图，4096×2048 压到 1024×512
-│   └── textures.cache          空数组占位（Cubism 2 模型才会请求，留着免得 404）
-└── model/Hiyori/               备选模型：Live2D 官方示例 Hiyori（约 1.8 MB）
-    ├── index.json              （即官方的 Hiyori.model3.json）
-    ├── Hiyori.moc3 / Hiyori.2048/ / motions/ / Hiyori.physics3.json …
-    └── textures.cache          空数组占位（组件会请求，免得 404）
+└── model/Elaina/               模型本体：《魔女之旅》伊蕾娜（MNDIA 配布，约 0.7 MB）
+    ├── index.json              （即作者的 LSS.model3.json）
+    ├── LSS.moc3 / LSS.physics3.json / LSS.cdi3.json
+    ├── Elaina.1024/            贴图，4096×2048 压到 1024×512
+    └── textures.cache          空数组占位（Cubism 2 模型才会请求，留着免得 404）
 ```
 
-合计约 3.1 MB（组件 0.6 MB + 两个模型），而且**默认关闭** ——
+合计约 1.3 MB（组件 0.6 MB + 模型 0.7 MB），而且**默认关闭** ——
 不点那个 🐾 按钮的访客一个字节都不会下载。
 
-> **默认模型是《魔女之旅》伊蕾娜**，作者 **MNDIA**，配布页在
+> **模型是《魔女之旅》伊蕾娜**，作者 **MNDIA**，配布页在
 > [模之屋](https://www.aplaybox.com/details/model/0MAXIOhAZAUw)。
 > 作者写明：**禁止商用**、允许二次配布、允许修改。本站是非商业个人博客，符合规则。
 > 角色本身版权归《魔女之旅》原作者与插画师。
 >
-> 备选是 **Live2D 官方示例模型 Hiyori**（来自 `Live2D/CubismWebSamples`），
-> 依据 [Live2D 免费素材利用许偌](https://www.live2d.com/eula/live2d-free-material-license-agreement_cn.html) 使用，
-> 版权归 Live2D Inc.。两段署名都写在**关于页**和 `src/live2d/CREDITS.md` 里。
+> 署名写在**关于页**和 `src/live2d/CREDITS.md` 里。
+> 早先默认用的是 Live2D 官方示例模型 Hiyori，现在仓库里只留伊蕾娜一个。
 >
 > 早先用的是 `fghrsh/live2d_api` 那种社区合集（里面有游戏角色提取物）。
 > 那类模型版权归各自原作者，**换个来源并不解决问题** —— 现在是作者本人公开配布、
 > 并且明确写清了使用规则的模型。
 
-**贴图做了压缩**：官方贴图是 2048×2048（两张共 4.3 MB），
-而这个看板娘的显示尺寸只有 300px，所以缩到 1024×1024，体积降到 1.1 MB，肉眼无差别。
+**贴图做了压缩**：原作贴图是 4096×2048（1.9 MB），
+而这个看板娘的显示尺寸只有 250px，所以缩到 1024×512，体积降到 227 KB，肉眼无差别。
 
 **想换成自己的模型**：把模型目录放到 `src/live2d/model/<你的模型名>/`
 （里面要有 `index.json`，以及它引用的 `.moc` / `.moc3`、贴图、动作等），
@@ -475,6 +483,28 @@ src/live2d/
 > 有这两个字段走 **Cubism 5**（`.moc3`），否则走 **Cubism 2**（`.moc`）。
 > **两套核心都已经自托管**，所以两种格式都能直接用 —— 不需要改 CSP，
 > 也不需要联网取官方 SDK。
+
+#### 工具条上的「一言」
+
+用的是组件自带的 `hitokoto` 工具，点了会拿一句 [hitokoto.cn](https://hitokoto.cn/)
+的句子显示在气泡里。**这是全站唯一一个第三方请求**，只有真的点那个按钮才会发出去，
+且只连 `https://v1.hitokoto.cn`（CSP 里单独放行了这一个域名）。
+
+两个地方给它打了补丁，都在 `js/blog.js` 里：
+
+1. **接口挂了要有兜底。** 组件内部是裸的 `fetch("https://v1.hitokoto.cn")`，
+   **没有 try/catch** —— 断网或者接口抽风时是一条未捕获报错 + 气泡什么都不出，
+   按钮点了像没反应。这里在 `initWidget` 之前把 `window.fetch` 包了一层：
+   **只有一言这个地址**失败时才返回一句本地诗词（8 句经典诗词，出处都可靠），
+   其余请求一律原样透传。
+2. **点了要真的显示。** 组件用 `sessionStorage` 里的 `waifu-message-priority`
+   挡消息：新消息优先级不高于当前那条就直接丢弃。刚进页面时欢迎语优先级更高，
+   这时候点「一言」会**请求发了、句子拿到了、气泡里却还是欢迎语**。
+   所以额外挂了一个捕获阶段的 click 监听，在组件自己的 handler 之前把那个优先级清掉 ——
+   「用户主动点的一言」永远显示得出来。
+
+验证脚本 `work/qa/verify-hitokoto.js` 两种场景都覆盖了：
+正常联网（气泡换成真的句子）和把接口掐掉（气泡换成本地句子、**且不能有未捕获报错**）。
 
 ### ⚠️ 一个把整个背景弄丢的坑
 

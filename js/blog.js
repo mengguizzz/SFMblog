@@ -1056,8 +1056,8 @@
          * 换成自己的模型：把模型放到 src/live2d/model/ 下，
          * 然后改 src/live2d/model_list.json 里的 models 数组。
          *
-         * 现在仓库里有两个模型：0 = 伊蕾娜（MNDIA 制作），1 = 官方示例 Hiyori。
-         * 想默认用另一个，把 MODEL_ID 改一下就行；工具条上的"换模型"也能切。
+         * 现在仓库里只有 0 = 伊蕾娜（MNDIA 配布）。
+         * 想换成别的模型，就往 model/ 里加一个，再改 model_list.json。
          */
         var MODEL_CDN = './src/live2d/';
         var MODEL_ID = 0;
@@ -1105,9 +1105,51 @@
             if (b) b.classList.remove('is-on');
         }
 
+        /*
+         * 一言（hitokoto）。
+         *
+         * 组件自带的那个按钮内部就是一句 `fetch("https://v1.hitokoto.cn")`，
+         * **没有 try/catch** —— 断网、接口抽风、或者被墙的时候，
+         * 结果是一条未捕获的报错 + 气泡什么都不显示，按钮点了像没反应。
+         *
+         * 所以这里在调组件之前把 fetch 包一层：**只有一言那个地址**失败时才自己兜一句，
+         * 其余请求原样透传。用经典诗词当兜底，不会引错出处。
+         */
+        var LOCAL_QUOTES = [
+            ['路漫漫其修远兮，吾将上下而求索。', '屈原《离骚》'],
+            ['长风破浪会有时，直挂云帆济沧海。', '李白《行路难》'],
+            ['山重水复疑无路，柳暗花明又一村。', '陆游《游山西村》'],
+            ['行到水穷处，坐看云起时。', '王维《终南别业》'],
+            ['海内存知己，天涯若比邻。', '王勃《送杜少府之任蜀州》'],
+            ['纸上得来终觉浅，绝知此事要躬行。', '陆游《冬夜读书示子聿》'],
+            ['不积跬步，无以至千里。', '《荀子·劝学》'],
+            ['千淘万漉虽辛苦，吹尽狂沙始到金。', '刘禹锡《浪淘沙》'],
+        ];
+
+        function hitokotoFallback() {
+            var q = LOCAL_QUOTES[Math.floor(Math.random() * LOCAL_QUOTES.length)];
+            return new Response(JSON.stringify({ hitokoto: q[0], from: q[1], creator: '' }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        function installHitokotoFallback() {
+            if (window.__sfmHitokotoWrapped || typeof window.fetch !== 'function') return;
+            window.__sfmHitokotoWrapped = true;
+            var orig = window.fetch;
+            window.fetch = function (input, init) {
+                var url = typeof input === 'string' ? input : (input && input.url) || '';
+                var p = orig.call(this, input, init);
+                if (url.indexOf('hitokoto.cn') === -1) return p;
+                return p.catch(hitokotoFallback);
+            };
+        }
+
         function start() {
             loading = false;
             hideBtn();
+            installHitokotoFallback();
             window.initWidget({
                 waifuPath: PATH + 'waifu-tips.json',
                 cubism2Path: PATH + 'live2d.min.js',
@@ -1115,8 +1157,8 @@
                 cubism5Path: PATH + 'live2dcubismcore.min.js',
                 cdnPath: MODEL_CDN,
                 modelId: MODEL_ID,
-                // 仓库里有两个模型，留个"换模型"；换装（贴图）没有额外素材，就不放了
-                tools: ['switch-model', 'info', 'quit'],
+                // 只有一个模型，切换和换装都没意义，就留"一言 / 关于 / 关闭"
+                tools: ['hitokoto', 'info', 'quit'],
                 logLevel: 'warn',
                 drag: true,
             });
@@ -1127,6 +1169,24 @@
                 if (t && t.closest && t.closest('#waifu-tool-quit, .waifu-tool-quit')) {
                     try { localStorage.setItem(PET_KEY, 'off'); } catch (err) { }
                     setTimeout(showBtn, 500);
+                }
+            }, true);
+
+            /*
+             * 一言那个按钮有时候"点了没反应"。
+             *
+             * 组件内部用 sessionStorage 里的 waifu-message-priority 挡消息：
+             * 新消息的优先级不高于当前正在显示的那条，就直接被丢弃。
+             * 而刚进页面时的欢迎语优先级更高 —— 于是这时候点"一言"，
+             * 请求发了、句子也拿到了，气泡里却还是欢迎语。
+             *
+             * 这里在捕获阶段先把那个优先级清掉（早点于组件自己的 click），
+             * 让"用户主动点的一言"永远能显示出来。
+             */
+            document.addEventListener('click', function (e) {
+                var t = e.target;
+                if (t && t.closest && t.closest('#waifu-tool-hitokoto')) {
+                    try { sessionStorage.removeItem('waifu-message-priority'); } catch (err) { }
                 }
             }, true);
         }
