@@ -386,6 +386,23 @@ function client_ip_hash(): string
     return substr(sha1($ip . '|sfmblog'), 0, 8);
 }
 
+/**
+ * 取一个"必须是纯数字"的文章 id。
+ *
+ * 不能直接 `(int)$_POST['id']` —— PHP 会把 'abc'、'../../config.php' 这类
+ * 通通转成 **0**，于是"打错一个字"就变成往第 0 篇文章发评论，
+ * 而路径穿越那类载荷看起来也会"成功"。宁可明确拒掉。
+ */
+function req_post_id(string $key = 'id'): ?int
+{
+    $v = $_POST[$key] ?? $_REQUEST[$key] ?? null;
+    if ($v === null || !is_scalar($v)) {
+        return null;
+    }
+    $s = trim((string)$v);
+    return preg_match('/^\d{1,9}$/', $s) === 1 ? (int)$s : null;
+}
+
 function comment_file(string $dir, int $pid): string
 {
     return $dir . '/' . $pid . '.json';
@@ -592,8 +609,8 @@ if ($action === 'post') {
 
 /** 取某篇文章的评论（只给 approved 的） */
 if ($action === 'comments') {
-    $pid = (int)($_REQUEST['id'] ?? -1);
-    if (!is_valid_post($raw, $pid) || deleted_at($raw[$pid]) !== null) {
+    $pid = req_post_id();
+    if ($pid === null || !is_valid_post($raw, $pid) || deleted_at($raw[$pid]) !== null) {
         respond(['error' => 'Post not found.'], 404);
     }
     $items = read_comments(comment_file($COMMENT_DIR, $pid));
@@ -613,8 +630,8 @@ if ($action === 'comments') {
 
 /** 发一条评论 */
 if ($action === 'comment') {
-    $pid = (int)($_POST['id'] ?? -1);
-    if (!is_valid_post($raw, $pid) || deleted_at($raw[$pid]) !== null) {
+    $pid = req_post_id();
+    if ($pid === null || !is_valid_post($raw, $pid) || deleted_at($raw[$pid]) !== null) {
         respond(['error' => 'Post not found.'], 404);
     }
 
@@ -775,7 +792,9 @@ if ($action === 'upload') {
 /* ---------------------------------------------------------- 文章：增 / 改 / 删 / 恢复 */
 
 $content = (string)($_POST['content'] ?? '');
-$id      = isset($_POST['id']) ? (int)$_POST['id'] : -1;
+    // 同 req_post_id 的理由：别让 'abc' 这种被 (int) 悄悄变成第 0 篇。
+    // 这里保留"没传 id = -1"的老语义（清空回收站要用到）。
+    $id      = req_post_id() ?? -1;
 
 /** 控制台用：一次拿到全部文章（含回收站）和正文 */
 if ($action === 'all') {
@@ -927,9 +946,12 @@ if ($action === 'comments-admin') {
 
 /** 改状态：通过 / 退回待审 / 标记垃圾 */
 if ($action === 'comment-status') {
-    $pid  = (int)($_POST['post'] ?? -1);
+    $pid  = req_post_id('post');
     $cid  = (string)($_POST['id'] ?? '');
     $next = (string)($_POST['status'] ?? '');
+    if ($pid === null) {
+        respond(['error' => 'Post not found.'], 404);
+    }
     if (!in_array($next, ['approved', 'pending', 'spam'], true)) {
         respond(['error' => 'Bad status.'], 400);
     }
@@ -956,8 +978,11 @@ if ($action === 'comment-status') {
 
 /** 删一条评论（连它的回复一起删；回复只有一层） */
 if ($action === 'comment-delete') {
-    $pid = (int)($_POST['post'] ?? -1);
+    $pid = req_post_id('post');
     $cid = (string)($_POST['id'] ?? '');
+    if ($pid === null) {
+        respond(['error' => 'Post not found.'], 404);
+    }
 
     $file  = comment_file($COMMENT_DIR, $pid);
     $fp    = comments_lock($file);
