@@ -3,6 +3,7 @@
  * 生成 config.php 用的密码哈希。
  *
  *     php tools/make-password.php '你的新密码'
+ *     php tools/make-password.php --raw '你的新密码'     # 只输出哈希，给脚本用
  *
  * 输出的是 password_hash() 的结果（bcrypt，自带随机盐、故意算得慢），
  * 复制到 config.php 的 EXPECTED_HASH 里即可。
@@ -17,16 +18,26 @@ if (PHP_SAPI !== 'cli') {
     exit("只能在命令行运行\n");
 }
 
-$password = $argv[1] ?? '';
+$raw = in_array('--raw', $argv, true);
+$args = array_values(array_filter(array_slice($argv, 1), function ($a) {
+    return $a !== '--raw';
+}));
+
+$password = $args[0] ?? '';
 if ($password === '') {
-    fwrite(STDERR, "用法: php tools/make-password.php '你的新密码'\n");
+    fwrite(STDERR, "用法: php tools/make-password.php [--raw] '你的新密码'\n");
     exit(1);
 }
-if (strlen($password) < 8) {
+if (!$raw && strlen($password) < 8) {
     fwrite(STDERR, "注意: 密码短于 8 位，建议再长一点。\n");
 }
 
 $hash = password_hash($password, PASSWORD_DEFAULT);
+
+if ($raw) {
+    echo $hash . "\n";          // 安装脚本要的就是这一行
+    exit(0);
+}
 
 echo "\n复制下面这一行到 config.php：\n\n";
 echo '<?php' . "\n";

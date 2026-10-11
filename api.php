@@ -217,7 +217,15 @@ function is_blank(string $block): bool
 /** 返回删除时间，没被删过就返回 null —— 这就是"deleted 标签" */
 function deleted_at(string $block): ?string
 {
-    return preg_match(DELETED_RE, $block, $m) === 1 ? trim($m[1]) : null;
+    /*
+     * 只看**头部**（标题 + DATE 那几行），不扫全文。
+     *
+     * 原来是在整块里找这个标记 —— 结果一篇"讲怎么删除"的教程，
+     * 正文里一旦引用这个标记，它自己就被判成已删除了（真踩过）。
+     * 程序自己插标记时也永远是插在 DATE 下面，所以限定头部不影响正常流程。
+     */
+    $head = implode("\n", array_slice(preg_split('/\n/', $block) ?: [], 0, 6));
+    return preg_match(DELETED_RE, $head, $m) === 1 ? trim($m[1]) : null;
 }
 
 function is_valid_post(array $raw, int $id): bool

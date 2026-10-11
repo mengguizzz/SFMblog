@@ -25,11 +25,44 @@
 
 ## 快速开始
 
-### 1. 把文件放上去
+### 方式一：一条命令（推荐）
+
+```bash
+git clone https://github.com/mengguizzz/SFMblog && cd SFMblog
+bash install.sh
+```
+
+不想克隆也可以直接在空目录里跑：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mengguizzz/SFMblog/main/install.sh | bash
+```
+
+它会**问你要装到哪个目录、后台密码设什么**（密码直接回车就是随机生成一个），然后：
+检查 PHP 版本与扩展 → 放好文件 → 生成 `config.php`（bcrypt 哈希）→
+把 `blogs/`、`comments/` 设成 750 → 打印怎么启动。
+
+想少回答问题就加参数，全部可用参数在 `bash install.sh --help`：
+
+```bash
+bash install.sh --dir=/var/www/blog          # 直接指定目录，不问
+bash install.sh --password='你的密码'         # 直接指定密码，不问
+bash install.sh --dir=/var/www/blog --nginx  # 顺手写一份 nginx 配置并 reload
+bash install.sh --serve                      # 装完直接用 php -S 起本地预览
+bash install.sh -y                           # 全默认，一个问题都不问
+```
+
+> 装完想立刻看看效果，用 `--serve`（或者手动 `cd 目录 && php -S 127.0.0.1:8080`）。
+> PHP 自带的这个服务器只是给你本地预览的，**它不会挡 `blogs/` 和 `comments/`**，
+> 别拿它对外提供服务 —— 对外的站点请用下面的 Nginx 配置。
+
+### 方式二：手动装（想知道每一步在干什么）
+
+#### 1. 把文件放上去
 
 下载本仓库，整个目录丢到站点根目录（示例用 `/var/www/sfmblog`）。
 
-### 2. 生成管理员密码
+#### 2. 生成管理员密码
 
 ```bash
 php tools/make-password.php '你的新密码'
@@ -40,7 +73,7 @@ php tools/make-password.php '你的新密码'
 > 不要用 `sha256sum` 自己算 —— sha256 太快了，拿到哈希可以暴力破解。
 > 这个脚本用的是 bcrypt（cost 12），慢得多。
 
-### 3. 写配置文件
+#### 3. 写配置文件
 
 把 `config.example.php` 复制成 **`config.php`**，填上刚才那串哈希：
 
@@ -58,7 +91,7 @@ $EXPECTED_HASH = '$2y$12$....';   // tools/make-password.php 的输出
 $COMMENT_MODERATE = true;    // 评论是否先进待审核（默认 true）
 ```
 
-### 4. 给目录写权限
+#### 4. 给目录写权限
 
 ```bash
 chown -R www-data:www-data blogs src/images comments
@@ -67,7 +100,7 @@ chmod 750 blogs comments          # 里面是文章原文和评论，别让同�
 
 `src/images/` 是图床上传目录，第一次上传时会自动创建。
 
-### 5. Nginx 参考配置
+#### 5. Nginx 参考配置
 
 ```nginx
 server {
@@ -111,7 +144,7 @@ server {
 > **不要把 `expires 7d` 加回 `html` / `css` / `js`。** 页面里的 `style.css?v=...`
 > 是版本号，用来踢掉旧缓存；一旦给它们加了长缓存，改完代码老访客浏览器里还是旧文件。
 
-### 6. 试试看
+#### 6. 试试看
 
 打开首页，点**页脚的头像**进入登录页（这是隐藏入口，导航里没有），
 输入第 2 步设的密码，就进控制台了。
