@@ -549,6 +549,15 @@ $EXPECTED_HASH = '';
 $COMMENT_MODERATE = true;
 $CONFIG = __DIR__ . '/config.php';
 if (is_file($CONFIG)) {
+    /*
+     * 注意这里为什么要判 readable：
+     * 文件在、但 PHP 进程读不了（典型的 chown root + 600）时，
+     * 直接 require 会抛致命错误 —— 前端只看到一个 500、什么提示都没有，
+     * 很难猜到是权限问题。所以这里给一句人话。
+     */
+    if (!is_readable($CONFIG)) {
+        respond(['error' => 'config.php 存在但 PHP 读不了：检查它的属主和权限（要让 PHP 进程的用户可读，例如 chown www-data:www-data config.php && chmod 640 config.php）'], 503);
+    }
     require $CONFIG;                       // 可在该文件里定义 $EXPECTED_HASH
 }
 
