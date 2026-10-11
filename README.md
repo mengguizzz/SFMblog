@@ -154,6 +154,16 @@ server {
 
 改完 `nginx -t && systemctl reload nginx`。
 
+> **部署完先跑一次体检**，让它直接告诉你哪里不对（文件权限、能不能写入、
+> `deny` 规则有没有生效、PHP 扩展全不全），有问题会连修法一起打出来：
+>
+> ```bash
+> sudo DOMAIN=你的域名 bash tools/doctor.sh /你的/站点目录
+> ```
+>
+> 带 `DOMAIN=` 时会**从公网侧**再验一遍，确认 `blogs/`、`comments/`、
+> `config.php` 从外面确实拿不到。
+
 > **不要把 `expires 7d` 加回 `html` / `css` / `js`。** 页面里的 `style.css?v=...`
 > 是版本号，用来踢掉旧缓存；一旦给它们加了长缓存，改完代码老访客浏览器里还是旧文件。
 
