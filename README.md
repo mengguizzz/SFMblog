@@ -35,8 +35,12 @@ bash install.sh
 不想克隆也可以直接在空目录里跑：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mengguizzz/SFMblog/main/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/mengguizzz/SFMblog@main/install.sh | bash
 ```
+
+> 这里特意用的是 **jsDelivr** 而不是 `raw.githubusercontent.com` —— 后者在国内很多网络下直接连不上
+> （实测连接超时），jsDelivr 能通。网络好的话两者都行，脚本自己也会在
+> `codeload.github.com` 和 `api.github.com` 之间自动换线路下载代码。
 
 它会**问你要装到哪个目录、后台密码设什么**（密码直接回车就是随机生成一个），然后：
 检查 PHP 版本与扩展 → 放好文件 → 生成 `config.php`（bcrypt 哈希）→

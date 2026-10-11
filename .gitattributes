@@ -1,0 +1,26 @@
+# 这个项目跑在 Linux 服务器上，行尾统一用 LF。
+#
+# 为什么必须写死：Windows 的 core.autocrlf=true 会在 checkout 时把文本文件转成 CRLF，
+# 于是 install.sh 变成 CRLF —— 传到 Linux 上跑就报
+#   "set: pipefail: invalid option name"
+# （bash 把 "\r" 也算进了选项名）。html/css/php 容忍 CRLF，所以只有 shell 脚本会炸，
+# 而这种问题在 Windows 上完全看不出来。
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.php  text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+
+# 二进制文件不要碰
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.moc3 binary
+*.woff2 binary

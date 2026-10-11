@@ -146,14 +146,25 @@ else
     # 单独下载这个脚本跑的：拉一份最新的代码
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT
-    URL="https://codeload.github.com/$REPO/tar.gz/refs/heads/$BRANCH"
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$URL" -o "$TMP/src.tgz" || die "下载失败：$URL"
-    elif command -v wget >/dev/null 2>&1; then
-        wget -qO "$TMP/src.tgz" "$URL" || die "下载失败：$URL"
-    else
-        die "既没有 curl 也没有 wget，下载不了。可以先 git clone 再跑 $0"
-    fi
+    # 两条线路都试：codeload 和 api.github.com 的 tarball。
+    # 国内有些网络会掐掉 github.com，但这两条通常能通。
+    URLS=(
+        "https://codeload.github.com/$REPO/tar.gz/refs/heads/$BRANCH"
+        "https://api.github.com/repos/$REPO/tarball/$BRANCH"
+    )
+    GOT=0
+    for url in "${URLS[@]}"; do
+        [ -n "${url:-}" ] || continue
+        if command -v curl >/dev/null 2>&1; then
+            if curl -fsSL --retry 2 --connect-timeout 15 "$url" -o "$TMP/src.tgz"; then GOT=1; break; fi
+        elif command -v wget >/dev/null 2>&1; then
+            if wget -qO "$TMP/src.tgz" --tries=2 --timeout=15 "$url"; then GOT=1; break; fi
+        else
+            die "既没有 curl 也没有 wget，下载不了。可以先 git clone 再跑 $0"
+        fi
+        warn "这条线路不行，换一条试试"
+    done
+    [ "$GOT" -eq 1 ] || die "两条线路都没下下来。可以先 git clone 再跑 $0"
     tar -xzf "$TMP/src.tgz" -C "$TMP" || die "解压失败"
     INNER="$(find "$TMP" -maxdepth 1 -mindepth 1 -type d | head -1)"
     cp -R "$INNER"/. "$DIR"/
