@@ -609,8 +609,9 @@ if ($action === 'list') {
 }
 
 if ($action === 'post') {
-    $pid = (int)($_REQUEST['id'] ?? -1);
-    if (!is_valid_post($raw, $pid)) {
+    // 上次改 id 校验时漏了这一处：`(int)'0x10'` 会变成 0，畸形 id 会静默落到第 0 篇
+    $pid = req_post_id();
+    if ($pid === null || !is_valid_post($raw, $pid)) {
         respond(['error' => 'Post not found.'], 404);
     }
     if (deleted_at($raw[$pid]) !== null) {
