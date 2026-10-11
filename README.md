@@ -42,6 +42,15 @@ curl -fsSL https://cdn.jsdelivr.net/gh/mengguizzz/SFMblog@main/install.sh | bash
 > （实测连接超时），jsDelivr 能通。网络好的话两者都行，脚本自己也会在
 > `codeload.github.com` 和 `api.github.com` 之间自动换线路下载代码。
 
+想直接带参数跑（管道进去时要加 `bash -s --`）：
+
+```bash
+curl -fsSL https://cdn.jsdelivr.net/gh/mengguizzz/SFMblog@main/install.sh | bash -s -- --dir=/var/www/blog
+```
+
+> jsDelivr 会缓存分支文件。改了 `install.sh` 之后如果发现拉到的还是旧的，
+> 访问一次 <https://purge.jsdelivr.net/gh/mengguizzz/SFMblog@main/install.sh> 就能刷掉缓存。
+
 它会**问你要装到哪个目录、后台密码设什么**（密码直接回车就是随机生成一个），然后：
 检查 PHP 版本与扩展 → 放好文件 → 生成 `config.php`（bcrypt 哈希）→
 把 `blogs/`、`comments/` 设成 750 → 打印怎么启动。
